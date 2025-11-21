@@ -1,0 +1,87 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
+
+// Components
+import Navbar from './components/Navbar';
+import PrivateRoute from './components/PrivateRoute';
+
+// Pages
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Products from './pages/Products';
+import ProductDetail from './pages/ProductDetail';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import Orders from './pages/Orders';
+import AdminDashboard from './pages/AdminDashboard';
+import RetailerDashboard from './pages/RetailerDashboard';
+import WholesalerDashboard from './pages/WholesalerDashboard';
+
+import './App.css';
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <CartProvider>
+          <div className="App">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
+              
+              {/* Protected Routes */}
+              <Route path="/cart" element={
+                <PrivateRoute>
+                  <Cart />
+                </PrivateRoute>
+              } />
+              <Route path="/checkout" element={
+                <PrivateRoute>
+                  <Checkout />
+                </PrivateRoute>
+              } />
+              <Route path="/orders" element={
+                <PrivateRoute>
+                  <Orders />
+                </PrivateRoute>
+              } />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminDashboard />
+                </PrivateRoute>
+              } />
+              
+              {/* Retailer Routes */}
+              <Route path="/retailer" element={
+                <PrivateRoute requiredRole="retailer">
+                  <RetailerDashboard />
+                </PrivateRoute>
+              } />
+              
+              {/* Wholesaler Routes */}
+              <Route path="/wholesaler" element={
+                <PrivateRoute requiredRole="wholesaler">
+                  <WholesalerDashboard />
+                </PrivateRoute>
+              } />
+              
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </div>
+        </CartProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
