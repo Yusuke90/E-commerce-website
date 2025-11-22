@@ -158,24 +158,32 @@ export default function WholesalerDashboard() {
           <h1 className="text-3xl font-bold mb-4">Wholesaler Dashboard</h1>
           
           {/* Tabs */}
-          <div className="flex border-b">
+          <div className="flex border-b bg-gradient-to-r from-gray-50 to-white">
             <button
               onClick={() => setActiveTab('products')}
-              className={`px-6 py-3 font-semibold ${activeTab === 'products'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-800'
+              className={`px-8 py-4 font-semibold transition-all duration-300 relative ${
+                activeTab === 'products'
+                  ? 'text-blue-600 bg-blue-50'
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
               }`}
+              style={{
+                borderBottom: activeTab === 'products' ? '3px solid #2563eb' : '3px solid transparent'
+              }}
             >
-              Products
+              📦 Products
             </button>
             <button
               onClick={() => setActiveTab('orders')}
-              className={`px-6 py-3 font-semibold ${activeTab === 'orders'
-                ? 'text-orange-600 border-b-2 border-orange-600'
-                : 'text-gray-600 hover:text-gray-800'
+              className={`px-8 py-4 font-semibold transition-all duration-300 relative ${
+                activeTab === 'orders'
+                  ? 'text-orange-600 bg-orange-50'
+                  : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50'
               }`}
+              style={{
+                borderBottom: activeTab === 'orders' ? '3px solid #ea580c' : '3px solid transparent'
+              }}
             >
-              Orders
+              📋 Orders
             </button>
           </div>
         </div>
@@ -188,9 +196,9 @@ export default function WholesalerDashboard() {
                 <h2 className="text-2xl font-bold">Products</h2>
                 <button
                   onClick={() => setShowForm(!showForm)}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200"
                 >
-                  {showForm ? 'Cancel' : 'Add Product'}
+                  {showForm ? '❌ Cancel' : '➕ Add Product'}
                 </button>
               </div>
             </div>
@@ -274,9 +282,9 @@ export default function WholesalerDashboard() {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {loading ? 'Adding...' : 'Add Product'}
+                {loading ? '⏳ Adding...' : '✅ Add Product'}
               </button>
             </div>
           </div>
@@ -422,7 +430,7 @@ export default function WholesalerDashboard() {
 
                     {/* Status Update */}
                     {order.status !== 'delivered' && order.status !== 'cancelled' && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-3 flex-wrap">
                         <button
                           onClick={() => {
                             const nextStatus = getNextStatus(order.status);
@@ -430,9 +438,9 @@ export default function WholesalerDashboard() {
                               updateOrderStatus(order._id, nextStatus);
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                         >
-                          Mark as {getNextStatus(order.status) ? getNextStatus(order.status).charAt(0).toUpperCase() + getNextStatus(order.status).slice(1) : 'Next Status'}
+                          ➡️ Mark as {getNextStatus(order.status) ? getNextStatus(order.status).charAt(0).toUpperCase() + getNextStatus(order.status).slice(1) : 'Next Status'}
                         </button>
                         {order.status !== 'delivered' && (
                           <button
@@ -441,9 +449,9 @@ export default function WholesalerDashboard() {
                                 updateOrderStatus(order._id, 'delivered');
                               }
                             }}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            className="px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                           >
-                            Mark as Delivered
+                            ✅ Mark as Delivered
                           </button>
                         )}
                       </div>
