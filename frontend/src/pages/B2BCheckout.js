@@ -6,7 +6,7 @@ import api from '../services/api';
 import { createPaymentOrder, verifyPayment, initiateRazorpayPayment } from '../services/payment';
 
 export default function B2BCheckout() {
-  const { b2bCart, clearB2BCart, b2bTotal } = useB2BCart();
+  const { b2bCart, clearB2BCart, b2bTotal, removeFromB2BCart, updateB2BCartQuantity } = useB2BCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -231,11 +231,61 @@ export default function B2BCheckout() {
 
             {b2bCart.map(item => (
               <div key={item.product._id} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #eee' }}>
-                <p style={{ fontWeight: 'bold' }}>{item.product.name}</p>
-                <p style={{ fontSize: '14px', color: '#666' }}>
-                  {item.quantity} units × ₹{item.product.wholesalePrice}
-                </p>
-                <p style={{ fontWeight: 'bold', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 'bold', marginBottom: '4px' }}>{item.product.name}</p>
+                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
+                      ₹{item.product.wholesalePrice} per unit
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Remove this item from cart?')) {
+                        removeFromB2BCart(item.product._id);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                    title="Remove item"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                  <label style={{ fontSize: '14px', color: '#666' }}>Quantity:</label>
+                  <input
+                    type="number"
+                    min={item.product.wholesaleMinQty || 1}
+                    max={item.product.stock}
+                    value={item.quantity}
+                    onChange={(e) => {
+                      const newQty = parseInt(e.target.value) || item.product.wholesaleMinQty || 1;
+                      if (newQty >= (item.product.wholesaleMinQty || 1) && newQty <= item.product.stock) {
+                        updateB2BCartQuantity(item.product._id, newQty);
+                      }
+                    }}
+                    style={{
+                      width: '80px',
+                      padding: '6px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <span style={{ fontSize: '14px', color: '#666' }}>
+                    (Min: {item.product.wholesaleMinQty || 1}, Max: {item.product.stock})
+                  </span>
+                </div>
+                
+                <p style={{ fontWeight: 'bold', marginTop: '8px', color: '#10b981' }}>
                   ₹{(item.quantity * item.product.wholesalePrice).toLocaleString()}
                 </p>
               </div>

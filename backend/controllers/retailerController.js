@@ -96,7 +96,7 @@ exports.browseWholesalerProducts = async (req, res) => {
 // This allows retailer to show wholesaler's products without physically stocking them
 exports.addProxyProduct = async (req, res) => {
   try {
-    const { wholesalerProductId, markup } = req.body;
+    const { wholesalerProductId, markup, quantity } = req.body;
 
     const wholesalerProduct = await Product.findOne({
       _id: wholesalerProductId,
@@ -107,25 +107,60 @@ exports.addProxyProduct = async (req, res) => {
       return res.status(404).json({ message: 'Wholesaler product not found' });
     }
 
-    // Create a proxy product for the retailer
-    const retailerProduct = new Product({
-      name: wholesalerProduct.name,
-      description: wholesalerProduct.description,
-      category: wholesalerProduct.category,
-      retailPrice: wholesalerProduct.wholesalePrice * (1 + (markup || 0.2)), // 20% markup default
-      stock: wholesalerProduct.stock, // Show wholesaler's stock
+    // Determine quantity to add (use provided quantity or minimum order quantity)
+    const qtyToAdd = quantity || wholesalerProduct.wholesaleMinQty || 1;
+
+    // Check if wholesaler has enough stock
+    if (wholesalerProduct.stock < qtyToAdd) {
+      return res.status(400).json({ 
+        message: `Insufficient stock. Only ${wholesalerProduct.stock} units available` 
+      });
+    }
+
+    // Check if retailer already has this product
+    const existingProduct = await Product.findOne({
       owner: req.user._id,
-      ownerType: 'retailer',
       sourceWholesaler: wholesalerProduct.owner,
-      wholesaleEnabled: false,
-      isLocalProduct: wholesalerProduct.isLocalProduct,
-      region: wholesalerProduct.region,
-      images: wholesalerProduct.images
+      name: wholesalerProduct.name,
+      ownerType: 'retailer'
     });
 
-    await retailerProduct.save();
+    let retailerProduct;
+
+    if (existingProduct) {
+      // Update existing product stock
+      existingProduct.stock += qtyToAdd;
+      // Update retail price if markup is provided
+      if (markup) {
+        existingProduct.retailPrice = wholesalerProduct.wholesalePrice * (1 + (markup || 0.2));
+      }
+      await existingProduct.save();
+      retailerProduct = existingProduct;
+    } else {
+      // Create a new product for the retailer
+      retailerProduct = new Product({
+        name: wholesalerProduct.name,
+        description: wholesalerProduct.description,
+        category: wholesalerProduct.category,
+        retailPrice: wholesalerProduct.wholesalePrice * (1 + (markup || 0.2)), // 20% markup default
+        stock: qtyToAdd, // Add the specified quantity
+        owner: req.user._id,
+        ownerType: 'retailer',
+        sourceWholesaler: wholesalerProduct.owner,
+        wholesaleEnabled: false,
+        isLocalProduct: wholesalerProduct.isLocalProduct,
+        region: wholesalerProduct.region,
+        images: wholesalerProduct.images
+      });
+      await retailerProduct.save();
+    }
+
+    // ✅ Reduce wholesaler's stock
+    wholesalerProduct.stock -= qtyToAdd;
+    await wholesalerProduct.save();
+
     res.status(201).json({
-      message: 'Product added to your inventory',
+      message: `Product added to your inventory. ${qtyToAdd} units added.`,
       product: retailerProduct
     });
   } catch (err) {

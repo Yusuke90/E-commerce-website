@@ -127,9 +127,18 @@ export default function RetailerDashboard() {
     return statusFlow[currentStatus];
   };
 
-  const addProxyProduct = async (wholesalerProductId) => {
+  const addProxyProduct = async (wholesalerProductId, product) => {
     const markup = prompt('Enter markup percentage (e.g., 20 for 20%)', '20');
     if (!markup) return;
+
+    const quantity = prompt(`Enter quantity to add (Min: ${product.wholesaleMinQty || 1}, Max: ${product.stock})`, product.wholesaleMinQty || 1);
+    if (!quantity) return;
+
+    const qty = parseInt(quantity);
+    if (qty < (product.wholesaleMinQty || 1) || qty > product.stock) {
+      alert(`Quantity must be between ${product.wholesaleMinQty || 1} and ${product.stock}`);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
@@ -142,13 +151,16 @@ export default function RetailerDashboard() {
         },
         body: JSON.stringify({
           wholesalerProductId: wholesalerProductId,
-          markup: parseFloat(markup) / 100
+          markup: parseFloat(markup) / 100,
+          quantity: qty
         })
       });
 
       if (response.ok) {
-        alert('Product added to your store!');
+        const data = await response.json();
+        alert(data.message || 'Product added to your store!');
         fetchMyProducts();
+        fetchWholesalerProducts(); // Refresh to show updated stock
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
@@ -369,7 +381,7 @@ export default function RetailerDashboard() {
                               🛒 Order Bulk
                             </button>
                             <button
-                              onClick={() => addProxyProduct(product._id)}
+                              onClick={() => addProxyProduct(product._id, product)}
                               className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold text-sm"
                             >
                               📦 Add to Store
