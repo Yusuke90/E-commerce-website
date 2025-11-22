@@ -1,13 +1,14 @@
 const razorpay = require('../config/razorpay');
 const crypto = require('crypto');
 const Order = require('../models/orderModel');
+const Product = require('../models/productModel');
 const emailService = require('../services/emailService');
 const User = require('../models/userModel');
 
 // Create Razorpay order
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    const { amount } = req.body; // amount in rupees
+    const { amount } = req.body;
 
     const normalizedAmount = Number(amount);
     if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
@@ -18,7 +19,7 @@ exports.createRazorpayOrder = async (req, res) => {
     }
 
     const options = {
-      amount: Math.round(normalizedAmount * 100), // Razorpay expects amount in paise
+      amount: Math.round(normalizedAmount * 100),
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     };
@@ -41,8 +42,7 @@ exports.createRazorpayOrder = async (req, res) => {
   }
 };
 
-// Verify Razorpay payment
-// Verify Razorpay payment
+// ✅ ENHANCED: Auto-add B2B purchases to retailer inventory
 exports.verifyPayment = async (req, res) => {
   try {
     const { 
@@ -64,7 +64,7 @@ exports.verifyPayment = async (req, res) => {
       console.log('Payment signature verified successfully');
       
       // Payment verified! Update order
-      const order = await Order.findById(orderId);
+      const order = await Order.findById(orderId).populate('items.product');
       
       if (!order) {
         console.error('Order not found:', orderId);
@@ -74,8 +74,8 @@ exports.verifyPayment = async (req, res) => {
         });
       }
 
-      // Get customer details separately
-      const customer = await User.findById(order.customer).select('name email');
+      // Get customer details
+      const customer = await User.findById(order.customer).select('name email role');
       
       if (!customer) {
         console.error('Customer not found:', order.customer);
@@ -90,9 +90,64 @@ exports.verifyPayment = async (req, res) => {
       order.status = 'confirmed';
       await order.save();
 
-      console.log('Order updated successfully. Sending emails...');
+      console.log('Order updated successfully');
 
-      // ✅ Send emails after successful payment
+      // ✅ NEW: If this is a B2B order (retailer buying from wholesaler), add to inventory
+      if (order.orderType === 'B2B' && customer.role === 'retailer') {
+        console.log('B2B order detected. Adding products to retailer inventory...');
+        
+        const addedProducts = [];
+        
+        for (const item of order.items) {
+          const wholesalerProduct = item.product;
+          
+          if (!wholesalerProduct) {
+            console.warn(`Product ${item.product} not found, skipping`);
+            continue;
+          }
+
+          // Check if retailer already has this product
+          const existingProduct = await Product.findOne({
+            owner: customer._id,
+            sourceWholesaler: wholesalerProduct.owner,
+            name: wholesalerProduct.name
+          });
+
+          if (existingProduct) {
+            // Update stock
+            existingProduct.stock += item.quantity;
+            await existingProduct.save();
+            console.log(`Updated existing product: ${existingProduct.name} (added ${item.quantity} units)`);
+            addedProducts.push({ ...existingProduct.toObject(), added: item.quantity });
+          } else {
+            // Create new product for retailer
+            const retailPrice = item.pricePerUnit * 1.3; // 30% markup by default
+            
+            const newProduct = new Product({
+              name: wholesalerProduct.name,
+              description: wholesalerProduct.description,
+              category: wholesalerProduct.category,
+              retailPrice: retailPrice,
+              stock: item.quantity,
+              owner: customer._id,
+              ownerType: 'retailer',
+              sourceWholesaler: wholesalerProduct.owner,
+              wholesaleEnabled: false,
+              isLocalProduct: wholesalerProduct.isLocalProduct,
+              region: wholesalerProduct.region,
+              images: wholesalerProduct.images
+            });
+
+            await newProduct.save();
+            console.log(`Created new product: ${newProduct.name} with ${item.quantity} units`);
+            addedProducts.push({ ...newProduct.toObject(), added: item.quantity });
+          }
+        }
+
+        console.log(`✅ Added ${addedProducts.length} products to retailer inventory`);
+      }
+
+      // Send emails
       try {
         await emailService.sendOrderConfirmation(order, customer);
         console.log('✅ Order confirmation email sent to:', customer.email);
@@ -109,7 +164,9 @@ exports.verifyPayment = async (req, res) => {
 
       res.json({
         success: true,
-        message: 'Payment verified successfully',
+        message: order.orderType === 'B2B' ? 
+          'Payment verified successfully. Products added to your inventory!' : 
+          'Payment verified successfully',
         order
       });
     } else {
