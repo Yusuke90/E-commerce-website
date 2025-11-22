@@ -13,48 +13,82 @@ exports.googleCallback = async (req, res) => {
     }
 
     // Exchange code for access token
-    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`,
-      grant_type: 'authorization_code'
-    });
+    let tokenResponse;
+    try {
+      tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/google/callback`,
+        grant_type: 'authorization_code'
+      });
+    } catch (error) {
+      console.error('Google token exchange error:', error.response?.data || error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     const { access_token } = tokenResponse.data;
+    
+    if (!access_token) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     // Get user info from Google
-    const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
+    let userInfoResponse;
+    try {
+      userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+    } catch (error) {
+      console.error('Google user info error:', error.response?.data || error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     const { id, email, name, picture } = userInfoResponse.data;
+    
+    if (!id) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
+
+    // Validate email (required)
+    if (!email) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=email_required`);
+    }
 
     // Find or create user
     let user = await User.findOne({ 
       $or: [
-        { email },
+        { email: email.toLowerCase() },
         { oauthProvider: 'google', oauthId: id.toString() }
       ]
     });
 
     if (user) {
-      // Update OAuth info if not set
-      if (!user.oauthProvider) {
+      // Existing user - login or link account
+      if (!user.oauthProvider || user.oauthProvider !== 'google') {
+        // Link OAuth account to existing user
         user.oauthProvider = 'google';
         user.oauthId = id.toString();
+        if (picture) user.profilePicture = picture;
+        if (!user.name && name) user.name = name;
+        await user.save();
+      } else if (user.oauthProvider === 'google' && user.oauthId !== id.toString()) {
+        // OAuth ID mismatch - potential security issue
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_mismatch`);
+      }
+      // Update profile picture if available
+      if (picture && (!user.profilePicture || user.profilePicture !== picture)) {
         user.profilePicture = picture;
-        if (!user.name) user.name = name;
         await user.save();
       }
     } else {
-      // Create new user
+      // New user - registration
       user = new User({
-        name,
-        email,
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
         oauthProvider: 'google',
         oauthId: id.toString(),
-        profilePicture: picture,
+        profilePicture: picture || null,
         role: 'customer' // OAuth users default to customer
       });
       await user.save();
@@ -103,52 +137,89 @@ exports.facebookCallback = async (req, res) => {
     }
 
     // Exchange code for access token
-    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
-      params: {
-        client_id: process.env.FACEBOOK_APP_ID,
-        client_secret: process.env.FACEBOOK_APP_SECRET,
-        redirect_uri: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/facebook/callback`,
-        code
-      }
-    });
+    let tokenResponse;
+    try {
+      tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+        params: {
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          redirect_uri: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/facebook/callback`,
+          code
+        }
+      });
+    } catch (error) {
+      console.error('Facebook token exchange error:', error.response?.data || error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     const { access_token } = tokenResponse.data;
+    
+    if (!access_token) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     // Get user info from Facebook
-    const userInfoResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
-      params: {
-        access_token,
-        fields: 'id,name,email,picture'
-      }
-    });
+    let userInfoResponse;
+    try {
+      userInfoResponse = await axios.get('https://graph.facebook.com/v18.0/me', {
+        params: {
+          access_token,
+          fields: 'id,name,email,picture.type(large)'
+        }
+      });
+    } catch (error) {
+      console.error('Facebook user info error:', error.response?.data || error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
 
     const { id, email, name, picture } = userInfoResponse.data;
+    
+    if (!id) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
+
+    // Validate email (required)
+    if (!email) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=email_required`);
+    }
+
+    // Extract picture URL (Facebook returns nested structure)
+    const pictureUrl = picture?.data?.url || null;
 
     // Find or create user
     let user = await User.findOne({
       $or: [
-        { email },
+        { email: email.toLowerCase() },
         { oauthProvider: 'facebook', oauthId: id.toString() }
       ]
     });
 
     if (user) {
-      // Update OAuth info if not set
-      if (!user.oauthProvider) {
+      // Existing user - login or link account
+      if (!user.oauthProvider || user.oauthProvider !== 'facebook') {
+        // Link OAuth account to existing user
         user.oauthProvider = 'facebook';
         user.oauthId = id.toString();
-        user.profilePicture = picture?.data?.url || null;
-        if (!user.name) user.name = name;
+        if (pictureUrl) user.profilePicture = pictureUrl;
+        if (!user.name && name) user.name = name;
+        await user.save();
+      } else if (user.oauthProvider === 'facebook' && user.oauthId !== id.toString()) {
+        // OAuth ID mismatch - potential security issue
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_mismatch`);
+      }
+      // Update profile picture if available
+      if (pictureUrl && (!user.profilePicture || user.profilePicture !== pictureUrl)) {
+        user.profilePicture = pictureUrl;
         await user.save();
       }
     } else {
-      // Create new user
+      // New user - registration
       user = new User({
-        name,
-        email,
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
         oauthProvider: 'facebook',
         oauthId: id.toString(),
-        profilePicture: picture?.data?.url || null,
+        profilePicture: pictureUrl,
         role: 'customer' // OAuth users default to customer
       });
       await user.save();

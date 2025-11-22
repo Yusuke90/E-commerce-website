@@ -15,19 +15,30 @@ exports.sendRegistrationOTP = async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email required' });
 
+    // Normalize email (lowercase)
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if email already exists
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ message: 'Email already exists' });
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      // Check if user is OAuth user
+      if (existing.oauthProvider) {
+        return res.status(400).json({ 
+          message: `Email already registered with ${existing.oauthProvider}. Please use OAuth login.` 
+        });
+      }
+      return res.status(400).json({ message: 'Email already exists' });
+    }
 
     // Generate OTP
     const otp = generateOTP();
 
     // Delete any existing OTPs for this email and purpose
-    await OTP.deleteMany({ email, purpose: 'registration' });
+    await OTP.deleteMany({ email: normalizedEmail, purpose: 'registration' });
 
     // Save new OTP
     const otpRecord = new OTP({
-      email,
+      email: normalizedEmail,
       otp,
       purpose: 'registration',
       expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
@@ -35,7 +46,7 @@ exports.sendRegistrationOTP = async (req, res) => {
     await otpRecord.save();
 
     // Send OTP email
-    await emailService.sendOTPEmail(email, otp, 'registration').catch(err =>
+    await emailService.sendOTPEmail(normalizedEmail, otp, 'registration').catch(err =>
       console.error('OTP email error:', err)
     );
 
@@ -57,17 +68,20 @@ exports.verifyRegistrationOTP = async (req, res) => {
       return res.status(400).json({ message: 'Email, OTP, and password required' });
     }
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Verify OTP
     const otpRecord = await OTP.findOne({
-      email,
-      otp,
+      email: normalizedEmail,
+      otp: otp.trim(),
       purpose: 'registration',
       verified: false,
       expiresAt: { $gt: new Date() }
     });
 
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'Invalid or expired OTP. Please request a new OTP.' });
     }
 
     // Mark OTP as verified
@@ -75,16 +89,21 @@ exports.verifyRegistrationOTP = async (req, res) => {
     await otpRecord.save();
 
     // Check if user already exists (race condition check)
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
+      if (existing.oauthProvider) {
+        return res.status(400).json({ 
+          message: `Email already registered with ${existing.oauthProvider}. Please use OAuth login.` 
+        });
+      }
       return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Create user
     const hashed = await bcrypt.hash(password, 10);
     const user = new User({
-      name: name || email.split('@')[0],
-      email,
+      name: name || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
       password: hashed,
       role: role || 'customer'
     });
@@ -163,10 +182,27 @@ exports.sendLoginOTP = async (req, res) => {
       return res.status(400).json({ message: 'Email and password required' });
     }
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Verify credentials first
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Check if user is OAuth-only user (no password)
+    if (user.oauthProvider && !user.password) {
+      return res.status(400).json({ 
+        message: `This account was created with ${user.oauthProvider}. Please use OAuth login.` 
+      });
+    }
+
+    // Check if password exists
+    if (!user.password) {
+      return res.status(400).json({ 
+        message: 'Password not set. Please use OAuth login or reset your password.' 
+      });
     }
 
     const passwordValid = await bcrypt.compare(password, user.password);
@@ -186,11 +222,11 @@ exports.sendLoginOTP = async (req, res) => {
     const otp = generateOTP();
 
     // Delete any existing OTPs for this email and purpose
-    await OTP.deleteMany({ email, purpose: 'login' });
+    await OTP.deleteMany({ email: normalizedEmail, purpose: 'login' });
 
     // Save new OTP
     const otpRecord = new OTP({
-      email,
+      email: normalizedEmail,
       otp,
       purpose: 'login',
       expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
@@ -198,7 +234,7 @@ exports.sendLoginOTP = async (req, res) => {
     await otpRecord.save();
 
     // Send OTP email
-    await emailService.sendOTPEmail(email, otp, 'login').catch(err =>
+    await emailService.sendOTPEmail(normalizedEmail, otp, 'login').catch(err =>
       console.error('OTP email error:', err)
     );
 
@@ -220,21 +256,24 @@ exports.verifyLoginOTP = async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP required' });
     }
 
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Verify OTP
     const otpRecord = await OTP.findOne({
-      email,
-      otp,
+      email: normalizedEmail,
+      otp: otp.trim(),
       purpose: 'login',
       verified: false,
       expiresAt: { $gt: new Date() }
     });
 
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'Invalid or expired OTP. Please request a new OTP.' });
     }
 
     // Get user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(400).json({ message: 'User not found' });
     }

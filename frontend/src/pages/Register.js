@@ -50,7 +50,9 @@ const Register = () => {
             return;
         }
 
-        const result = await sendRegistrationOTP(formData.email);
+        // Normalize email
+        const normalizedEmail = formData.email.toLowerCase().trim();
+        const result = await sendRegistrationOTP(normalizedEmail);
 
         if (result.success) {
             setOtpSent(true);
@@ -81,16 +83,21 @@ const Register = () => {
         setSuccess('');
         setLoading(true);
 
-        if (!otp || otp.length !== 6) {
+        // Normalize and validate OTP
+        const normalizedOtp = otp.trim().replace(/\D/g, ''); // Remove non-digits
+        if (!normalizedOtp || normalizedOtp.length !== 6) {
             setError('Please enter a valid 6-digit OTP');
             setLoading(false);
             return;
         }
 
+        // Normalize email
+        const normalizedEmail = formData.email.toLowerCase().trim();
+
         // Prepare data based on role
         let userData = {
-            name: formData.name,
-            email: formData.email,
+            name: formData.name.trim(),
+            email: normalizedEmail,
             password: formData.password,
             role: formData.role,
         };
@@ -113,7 +120,7 @@ const Register = () => {
             };
         }
 
-        const result = await verifyRegistrationOTP(userData, otp);
+        const result = await verifyRegistrationOTP(userData, normalizedOtp);
 
         if (result.success) {
             // Check if auto-login is enabled (for customers)
@@ -163,10 +170,13 @@ const Register = () => {
     // Handle OAuth registration (only for customers)
     const handleOAuthRegister = async (provider) => {
         try {
+            setError('');
+            setLoading(true);
             const response = await api.get(`/auth/${provider}/url`);
             window.location.href = response.data.authUrl;
         } catch (error) {
-            setError(`Failed to initiate ${provider} registration`);
+            setError(`Failed to initiate ${provider} registration. Please try again.`);
+            setLoading(false);
         }
     };
 

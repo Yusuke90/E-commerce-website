@@ -24,16 +24,23 @@ const Login = () => {
             setError('OAuth login failed. Please try again.');
         } else if (error === 'account_pending') {
             setError('Your account is pending approval. Please contact admin.');
+        } else if (error === 'email_required') {
+            setError('Email is required for OAuth login. Please use a different authentication method.');
+        } else if (error === 'oauth_mismatch') {
+            setError('OAuth account mismatch. Please contact support.');
         }
     }, [searchParams]);
 
     // Handle OAuth login
     const handleOAuthLogin = async (provider) => {
         try {
+            setError('');
+            setLoading(true);
             const response = await api.get(`/auth/${provider}/url`);
             window.location.href = response.data.authUrl;
         } catch (error) {
-            setError(`Failed to initiate ${provider} login`);
+            setError(`Failed to initiate ${provider} login. Please try again.`);
+            setLoading(false);
         }
     };
 
@@ -44,7 +51,15 @@ const Login = () => {
         setSuccess('');
         setLoading(true);
 
-        const result = await sendLoginOTP(email, password);
+        // Normalize email
+        const normalizedEmail = email.toLowerCase().trim();
+        if (!normalizedEmail || !password) {
+            setError('Please enter both email and password');
+            setLoading(false);
+            return;
+        }
+
+        const result = await sendLoginOTP(normalizedEmail, password);
 
         if (result.success) {
             setStep(2);
@@ -74,13 +89,18 @@ const Login = () => {
         setSuccess('');
         setLoading(true);
 
-        if (!otp || otp.length !== 6) {
+        // Normalize and validate OTP
+        const normalizedOtp = otp.trim().replace(/\D/g, ''); // Remove non-digits
+        if (!normalizedOtp || normalizedOtp.length !== 6) {
             setError('Please enter a valid 6-digit OTP');
             setLoading(false);
             return;
         }
 
-        const result = await verifyLoginOTP(email, otp);
+        // Normalize email
+        const normalizedEmail = email.toLowerCase().trim();
+
+        const result = await verifyLoginOTP(normalizedEmail, normalizedOtp);
 
         if (result.success) {
             // Redirect based on role
@@ -104,7 +124,8 @@ const Login = () => {
     const handleResendOTP = async () => {
         setError('');
         setLoading(true);
-        const result = await sendLoginOTP(email, password);
+        const normalizedEmail = email.toLowerCase().trim();
+        const result = await sendLoginOTP(normalizedEmail, password);
         if (result.success) {
             setSuccess('OTP resent to your email!');
             setOtpTimer(600);
