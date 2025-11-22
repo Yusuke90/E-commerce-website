@@ -92,6 +92,36 @@ exports.browseWholesalerProducts = async (req, res) => {
   }
 };
 
+// Update retailer location
+exports.updateLocation = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ message: 'Latitude and longitude required' });
+    }
+
+    const retailer = await User.findById(req.user._id);
+    if (!retailer || retailer.role !== 'retailer') {
+      return res.status(403).json({ message: 'Only retailers can update location' });
+    }
+
+    retailer.retailerInfo.location = {
+      type: 'Point',
+      coordinates: [Number(longitude), Number(latitude)]
+    };
+
+    await retailer.save();
+    res.json({ 
+      message: 'Location updated successfully',
+      location: retailer.retailerInfo.location
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'server error' });
+  }
+};
+
 // Add wholesaler product to retailer's inventory (proxy availability)
 // This allows retailer to show wholesaler's products without physically stocking them
 exports.addProxyProduct = async (req, res) => {

@@ -43,8 +43,7 @@ const userSchema = new mongoose.Schema({
 // Index for OAuth lookup
 userSchema.index({ oauthProvider: 1, oauthId: 1 });
 
-// Only create geospatial index if location exists and is valid
-// We'll add this later when we have proper location data
-// userSchema.index({ 'retailerInfo.location': '2dsphere' });
+// Geospatial index for location-based queries
+userSchema.index({ 'retailerInfo.location': '2dsphere' });
 
 module.exports = mongoose.model('User', userSchema);

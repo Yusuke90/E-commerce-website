@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import LocationPicker from '../components/LocationPicker';
 
 const Register = () => {
     const [formData, setFormData] = useState({
@@ -17,6 +18,8 @@ const Register = () => {
         gstNumber: '',
         address: '',
         phone: '',
+        // Location
+        location: null,
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -109,6 +112,7 @@ const Register = () => {
                 gstNumber: formData.gstNumber,
                 address: formData.address,
                 phone: formData.phone,
+                location: formData.location,
             };
         } else if (formData.role === 'wholesaler') {
             userData = {

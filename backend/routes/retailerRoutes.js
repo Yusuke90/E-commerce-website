@@ -21,4 +21,7 @@ router.delete('/products/:id', retailerController.deleteProduct);
 // Add wholesaler product to inventory (proxy)
 router.post('/add-proxy-product', retailerController.addProxyProduct);
 
+// Update retailer location
+router.put('/location', retailerController.updateLocation);
+
 module.exports = router;

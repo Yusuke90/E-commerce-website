@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { calculateDistance, formatDistance } from '../utils/distance';
 
 export default function Products() {
   const navigate = useNavigate();
@@ -14,24 +15,78 @@ export default function Products() {
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [addingToCartId, setAddingToCartId] = useState(null);
+  const [nearby, setNearby] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
+  const [maxDistance, setMaxDistance] = useState(10); // km
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setNearby(true);
+        },
+        (error) => {
+          alert('Unable to get your location. Please enable location access.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/products');
+      let url = 'http://localhost:5000/api/products';
+      if (nearby && userLocation) {
+        url += `?nearby=true&lat=${userLocation.lat}&lng=${userLocation.lng}&maxDistance=${maxDistance * 1000}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       console.log('Fetched products:', data);
-      setProducts(data);
+      
+      // Calculate distances if user location is available
+      if (userLocation && data.length > 0) {
+        const productsWithDistance = data.map(product => {
+          if (product.owner?.retailerInfo?.location?.coordinates) {
+            const [lng, lat] = product.owner.retailerInfo.location.coordinates;
+            const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+            return { ...product, distance };
+          }
+          return product;
+        }).sort((a, b) => {
+          // Sort by distance if available
+          if (a.distance && b.distance) return a.distance - b.distance;
+          if (a.distance) return -1;
+          if (b.distance) return 1;
+          return 0;
+        });
+        setProducts(productsWithDistance);
+      } else {
+        setProducts(data);
+      }
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (nearby && userLocation) {
+      fetchProducts();
+    } else if (!nearby) {
+      fetchProducts();
+    }
+  }, [nearby, userLocation, maxDistance]);
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = category === 'all' || product.category === category;
@@ -98,7 +153,7 @@ export default function Products() {
           padding: '24px',
           marginBottom: '32px'
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <input
               type="text"
               placeholder="🔍 Search products..."
@@ -130,6 +185,52 @@ export default function Products() {
                 </option>
               ))}
             </select>
+          </div>
+          
+          {/* Nearby Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={nearby}
+                onChange={(e) => {
+                  if (e.target.checked && !userLocation) {
+                    getCurrentLocation();
+                  } else {
+                    setNearby(e.target.checked);
+                  }
+                }}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>📍 Show Nearby Products</span>
+            </label>
+            
+            {nearby && userLocation && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#666' }}>Within:</span>
+                <select
+                  value={maxDistance}
+                  onChange={(e) => setMaxDistance(Number(e.target.value))}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value={5}>5 km</option>
+                  <option value={10}>10 km</option>
+                  <option value={25}>25 km</option>
+                  <option value={50}>50 km</option>
+                </select>
+              </div>
+            )}
+            
+            {nearby && userLocation && (
+              <span style={{ fontSize: '12px', color: '#10b981' }}>
+                ✓ Location: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -283,7 +384,7 @@ export default function Products() {
                   </div>
 
                   {/* Stock */}
-                  <div style={{ marginBottom: '16px' }}>
+                  <div style={{ marginBottom: '8px' }}>
                     <span style={{ fontSize: '14px', color: '#6b7280' }}>Stock: </span>
                     <span style={{
                       fontWeight: '600',
@@ -292,6 +393,15 @@ export default function Products() {
                       {product.stock > 0 ? `${product.stock} units` : 'Out of Stock'}
                     </span>
                   </div>
+
+                  {/* Distance */}
+                  {product.distance !== undefined && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <span style={{ fontSize: '14px', color: '#3b82f6', fontWeight: '600' }}>
+                        📍 {formatDistance(product.distance)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: '8px' }}>
