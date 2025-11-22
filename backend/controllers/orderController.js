@@ -60,10 +60,6 @@ exports.createOrder = async (req, res) => {
         seller: product.owner,
         sellerType: product.ownerType
       });
-      
-      // Update product stock
-      product.stock -= cartItem.quantity;
-      await product.save();
     }
     
     // Calculate totals
@@ -90,6 +86,18 @@ exports.createOrder = async (req, res) => {
     });
     
     await order.save();
+    
+    // ✅ FIX: Only deduct stock for non-online payments immediately
+    // For online payments, stock will be deducted after payment verification
+    if (paymentMethod !== 'online') {
+      for (const cartItem of cart.items) {
+        const product = cartItem.product;
+        if (product) {
+          product.stock -= cartItem.quantity;
+          await product.save();
+        }
+      }
+    }
     
     // Clear cart
     cart.items = [];
@@ -206,12 +214,17 @@ exports.updateOrderStatus = async (req, res) => {
     }
     
     if (status === 'cancelled') {
-      // Restore stock
-      for (const item of order.items) {
-        const product = await Product.findById(item.product);
-        if (product) {
-          product.stock += item.quantity;
-          await product.save();
+      // ✅ FIX: Only restore stock if order was not already cancelled
+      // and if stock was actually deducted (i.e., payment was completed or was cash payment)
+      if (order.status !== 'cancelled' && 
+          (order.paymentStatus === 'completed' || order.paymentMethod !== 'online')) {
+        // Restore stock
+        for (const item of order.items) {
+          const product = await Product.findById(item.product);
+          if (product) {
+            product.stock += item.quantity;
+            await product.save();
+          }
         }
       }
     }
@@ -246,17 +259,21 @@ exports.cancelOrder = async (req, res) => {
       return res.status(400).json({ message: 'Cannot cancel order that is already shipped or delivered' });
     }
     
-    order.status = 'cancelled';
-    
-    // Restore stock
-    for (const item of order.items) {
-      const product = await Product.findById(item.product);
-      if (product) {
-        product.stock += item.quantity;
-        await product.save();
+    // ✅ FIX: Only restore stock if it was already deducted
+    // (i.e., payment was completed or was cash/offline payment)
+    if (order.status !== 'cancelled' && 
+        (order.paymentStatus === 'completed' || order.paymentMethod !== 'online')) {
+      // Restore stock
+      for (const item of order.items) {
+        const product = await Product.findById(item.product);
+        if (product) {
+          product.stock += item.quantity;
+          await product.save();
+        }
       }
     }
     
+    order.status = 'cancelled';
     await order.save();
     
     res.json({ message: 'Order cancelled successfully', order });

@@ -60,10 +60,6 @@ exports.createB2BOrder = async (req, res) => {
         seller: product.owner,
         sellerType: 'wholesaler'
       });
-
-      // Update product stock
-      product.stock -= item.quantity;
-      await product.save();
     }
 
     // Calculate totals
@@ -88,6 +84,18 @@ exports.createB2BOrder = async (req, res) => {
     });
 
     await order.save();
+
+    // ✅ FIX: Only deduct stock for non-online payments immediately
+    // For online payments, stock will be deducted after payment verification
+    if (paymentMethod !== 'online') {
+      for (const item of items) {
+        const product = await Product.findById(item.productId);
+        if (product) {
+          product.stock -= item.quantity;
+          await product.save();
+        }
+      }
+    }
 
     res.status(201).json({ 
       message: 'B2B order placed successfully', 

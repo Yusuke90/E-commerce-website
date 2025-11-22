@@ -88,6 +88,29 @@ exports.verifyPayment = async (req, res) => {
       order.paymentStatus = 'completed';
       order.paymentId = razorpay_payment_id;
       order.status = 'confirmed';
+      
+      // ✅ FIX: Deduct stock for online payments after payment verification
+      if (order.paymentMethod === 'online') {
+        for (const item of order.items) {
+          // item.product is already populated, but we need to get fresh data for stock update
+          const productId = item.product._id || item.product;
+          const product = await Product.findById(productId);
+          if (product) {
+            // Double-check stock availability before deducting
+            if (product.stock >= item.quantity) {
+              product.stock -= item.quantity;
+              await product.save();
+              console.log(`Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+            } else {
+              console.error(`Insufficient stock for product ${product.name} (ID: ${product._id}). Available: ${product.stock}, Required: ${item.quantity}`);
+              // Could handle this case - maybe refund or notify admin
+            }
+          } else {
+            console.error(`Product not found for item: ${item.productId || item.product}`);
+          }
+        }
+      }
+      
       await order.save();
 
       console.log('Order updated successfully');
