@@ -1,5 +1,6 @@
-// RetailerDashboard.js - Complete Component
+// RetailerDashboard.js - Complete Component with B2B Cart
 import React, { useState, useEffect } from 'react';
+import { useB2BCart } from '../context/B2BCartContext';
 
 export default function RetailerDashboard() {
   const [activeTab, setActiveTab] = useState('browse'); // browse, myProducts, addProduct, orders
@@ -8,6 +9,10 @@ export default function RetailerDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  // B2B Cart
+  const { addToB2BCart } = useB2BCart();
+  const [orderQuantities, setOrderQuantities] = useState({});
 
   // Form state for adding own products
   const [formData, setFormData] = useState({
@@ -31,11 +36,13 @@ export default function RetailerDashboard() {
   const fetchWholesalerProducts = async () => {
     try {
       const token = localStorage.getItem('token');
+      // Changed to match your backend route
       const response = await fetch('http://localhost:5000/api/retailer/browse-wholesalers', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setWholesalerProducts(data.products || []);
+      console.log('Wholesaler products:', data);
+      setWholesalerProducts(data.products || data); // Handle both response formats
     } catch (error) {
       console.error('Error fetching wholesaler products:', error);
     }
@@ -44,10 +51,12 @@ export default function RetailerDashboard() {
   const fetchMyProducts = async () => {
     try {
       const token = localStorage.getItem('token');
+      // Changed to match your backend route (no /me)
       const response = await fetch('http://localhost:5000/api/retailer/products', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
+      console.log('My products:', data);
       setMyProducts(data);
     } catch (error) {
       console.error('Error fetching my products:', error);
@@ -85,7 +94,7 @@ export default function RetailerDashboard() {
 
       if (response.ok) {
         alert('Order status updated successfully!');
-        fetchOrders(); // Refresh orders
+        fetchOrders();
       } else {
         const error = await response.json();
         alert(`Error: ${error.message}`);
@@ -124,6 +133,7 @@ export default function RetailerDashboard() {
 
     try {
       const token = localStorage.getItem('token');
+      // Changed to match your backend route
       const response = await fetch('http://localhost:5000/api/retailer/add-proxy-product', {
         method: 'POST',
         headers: {
@@ -272,7 +282,7 @@ export default function RetailerDashboard() {
               <div>
                 <h2 className="text-2xl font-bold mb-4">Wholesale Marketplace (B2B)</h2>
                 <p className="text-gray-600 mb-6">
-                  Browse products from wholesalers and add them to your store
+                  Browse products from wholesalers and add them to your store or order in bulk
                 </p>
 
                 {wholesalerProducts.length === 0 ? (
@@ -292,11 +302,11 @@ export default function RetailerDashboard() {
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
+                                e.target.nextElementSibling.style.display = 'flex';
                               }}
                             />
                           ) : null}
-                          <div className="w-full h-full flex items-center justify-center text-gray-400" style={{ display: 'none' }}>
+                          <div className="w-full h-full flex items-center justify-center text-gray-400" style={{ display: product.images && product.images.length > 0 ? 'none' : 'flex' }}>
                             No Image Available
                           </div>
                         </div>
@@ -328,13 +338,43 @@ export default function RetailerDashboard() {
                                 {product.stock}
                               </span>
                             </div>
+
+                            {/* Order quantity input */}
+                            <div className="mt-3">
+                              <label className="text-sm text-gray-600 block mb-1">Order Quantity:</label>
+                              <input
+                                type="number"
+                                min={product.wholesaleMinQty || 1}
+                                max={product.stock}
+                                value={orderQuantities[product._id] || product.wholesaleMinQty || 1}
+                                onChange={(e) => setOrderQuantities({
+                                  ...orderQuantities,
+                                  [product._id]: parseInt(e.target.value)
+                                })}
+                                className="w-full px-3 py-2 border rounded"
+                              />
+                            </div>
                           </div>
-                          <button
-                            onClick={() => addProxyProduct(product._id)}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold"
-                          >
-                            Add to My Store
-                          </button>
+
+                          {/* B2B Cart and Proxy buttons */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => {
+                                const qty = orderQuantities[product._id] || product.wholesaleMinQty || 1;
+                                addToB2BCart(product, qty);
+                                alert('Added to B2B cart!');
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-semibold text-sm"
+                            >
+                              🛒 Order Bulk
+                            </button>
+                            <button
+                              onClick={() => addProxyProduct(product._id)}
+                              className="bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-semibold text-sm"
+                            >
+                              📦 Add to Store
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -602,8 +642,11 @@ export default function RetailerDashboard() {
                                 }
                               }}
                               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              disabled={!getNextStatus(order.status)}
                             >
-                              Mark as {getNextStatus(order.status) ? getNextStatus(order.status).charAt(0).toUpperCase() + getNextStatus(order.status).slice(1) : 'Next Status'}
+                              {getNextStatus(order.status) ?
+                                `Mark as ${getNextStatus(order.status).charAt(0).toUpperCase() + getNextStatus(order.status).slice(1)}`
+                                : 'No Next Status'}
                             </button>
                             {order.status !== 'delivered' && (
                               <button

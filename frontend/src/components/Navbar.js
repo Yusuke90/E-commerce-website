@@ -2,10 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useB2BCart } from '../context/B2BCartContext';
 
 const Navbar = () => {
     const { isAuthenticated, user, logout, isAdmin, isRetailer, isWholesaler } = useAuth();
     const { cartItemCount } = useCart();
+    const { b2bItemCount } = useB2BCart(); // Changed from b2bCartItemCount to b2bItemCount
 
     return (
         <nav className="navbar">
@@ -50,9 +52,19 @@ const Navbar = () => {
 
                             {/* Retailer Links */}
                             {isRetailer && (
-                                <li>
-                                    <Link to="/retailer">Retailer Dashboard</Link>
-                                </li>
+                                <>
+                                    <li>
+                                        <Link to="/retailer">Retailer Dashboard</Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/b2b-checkout">
+                                            🛒 B2B Cart
+                                            {b2bItemCount > 0 && (
+                                                <span className="cart-badge">{b2bItemCount}</span>
+                                            )}
+                                        </Link>
+                                    </li>
+                                </>
                             )}
 
                             {/* Wholesaler Links */}

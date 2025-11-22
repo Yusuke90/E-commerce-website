@@ -18,6 +18,7 @@ const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
+const b2bOrderRoutes = require('./routes/b2bOrderRoutes');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -29,6 +30,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/b2b-orders', b2bOrderRoutes);
 
 app.get('/test-admin', (req, res) => {
   res.json({ message: 'Admin routes are loaded' });
