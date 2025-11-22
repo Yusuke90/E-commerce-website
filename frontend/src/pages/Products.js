@@ -50,16 +50,36 @@ export default function Products() {
         url += `?nearby=true&lat=${userLocation.lat}&lng=${userLocation.lng}&maxDistance=${maxDistance * 1000}`;
       }
       const response = await fetch(url);
+      
+      // Check if response is ok
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch products' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       console.log('Fetched products:', data);
+      
+      // Ensure data is an array
+      if (!Array.isArray(data)) {
+        console.error('Invalid response format:', data);
+        setProducts([]);
+        return;
+      }
       
       // Calculate distances if user location is available
       if (userLocation && data.length > 0) {
         const productsWithDistance = data.map(product => {
           if (product.owner?.retailerInfo?.location?.coordinates) {
             const [lng, lat] = product.owner.retailerInfo.location.coordinates;
-            const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
-            return { ...product, distance };
+            // Validate coordinates before calculating distance
+            if (typeof lat === 'number' && typeof lng === 'number' && 
+                !isNaN(lat) && !isNaN(lng) &&
+                typeof userLocation.lat === 'number' && typeof userLocation.lng === 'number' &&
+                !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
+              const distance = calculateDistance(userLocation.lat, userLocation.lng, lat, lng);
+              return { ...product, distance };
+            }
           }
           return product;
         }).sort((a, b) => {
@@ -75,6 +95,8 @@ export default function Products() {
       }
     } catch (error) {
       console.error('Error fetching products:', error);
+      alert(`Error loading products: ${error.message}. Please try again.`);
+      setProducts([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

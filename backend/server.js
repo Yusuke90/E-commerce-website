@@ -44,17 +44,30 @@ app.get('/health', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
+    .then(async () => {
         console.log('MongoDB connected successfully');
+        
+        // Ensure geospatial index exists for location-based queries
+        const User = require('./models/userModel');
+        try {
+            await User.collection.createIndex({ 'retailerInfo.location': '2dsphere' });
+            console.log('Geospatial index verified/created for retailer locations');
+        } catch (indexError) {
+            // Index might already exist, which is fine
+            if (indexError.code !== 85) { // 85 = IndexOptionsConflict
+                console.log('Note: Geospatial index check:', indexError.message);
+            }
+        }
+        
         app.get('/test-routes', (req, res) => {
-  res.json({ 
-    message: 'Routes test',
-    retailerRoutes: 'loaded'
-  });
-});
+            res.json({ 
+                message: 'Routes test',
+                retailerRoutes: 'loaded'
+            });
+        });
 
-// Also add this to check if retailer routes are loading
-console.log('Retailer routes loaded');
+        // Also add this to check if retailer routes are loading
+        console.log('Retailer routes loaded');
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     })
     .catch(err => console.error('MongoDB connection error:', err));

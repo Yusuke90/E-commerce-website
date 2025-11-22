@@ -26,28 +26,88 @@ exports.listPublic = async (req,res) => {
     
     // Location-based filtering
     if (nearby === 'true' && lat && lng) {
-      // Find retailers near the location
-      const nearbyRetailers = await User.find({
-        role: 'retailer',
-        'retailerInfo.location': {
-          $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: [Number(lng), Number(lat)]
-            },
-            $maxDistance: Number(maxDistance) || 10000 // default 10km
+      try {
+        // Find retailers near the location using $near (requires 2dsphere index)
+        // Note: $near only works on fields with 2dsphere index and valid GeoJSON Points
+        const nearbyRetailers = await User.find({
+          role: 'retailer',
+          'retailerInfo.location': {
+            $near: {
+              $geometry: {
+                type: 'Point',
+                coordinates: [Number(lng), Number(lat)]
+              },
+              $maxDistance: Number(maxDistance) || 10000 // default 10km in meters
+            }
           }
+        }).select('_id');
+        
+        const retailerIds = nearbyRetailers.map(r => r._id);
+        
+        // Handle case when no nearby retailers found
+        if (retailerIds.length === 0) {
+          return res.json([]); // Return empty array if no nearby retailers
         }
-      }).select('_id');
-      
-      const retailerIds = nearbyRetailers.map(r => r._id);
-      
-      // ✅ FIX: Handle case when no nearby retailers found
-      if (retailerIds.length === 0) {
-        return res.json([]); // Return empty array if no nearby retailers
+        
+        filter.owner = { $in: retailerIds };
+      } catch (geoError) {
+        // If geospatial query fails (e.g., index not created or invalid data), 
+        // fall back to manual distance calculation
+        console.error('Geospatial query error:', geoError.message);
+        console.log('Falling back to manual distance calculation...');
+        
+        // Get all retailers with valid location data
+        const retailersWithLocation = await User.find({
+          role: 'retailer',
+          'retailerInfo.location': {
+            $exists: true,
+            $ne: null
+          }
+        }).select('_id retailerInfo.location');
+        
+        if (retailersWithLocation.length === 0) {
+          return res.json([]);
+        }
+        
+        // Calculate distance manually for each retailer using Haversine formula
+        const userLat = Number(lat);
+        const userLng = Number(lng);
+        const maxDist = Number(maxDistance) || 10000; // in meters
+        
+        const nearbyRetailerIds = retailersWithLocation
+          .filter(retailer => {
+            const loc = retailer.retailerInfo?.location;
+            if (!loc || !loc.coordinates || !Array.isArray(loc.coordinates) || loc.coordinates.length !== 2) {
+              return false;
+            }
+            
+            const [retLng, retLat] = loc.coordinates;
+            
+            // Validate coordinates
+            if (isNaN(retLat) || isNaN(retLng) || isNaN(userLat) || isNaN(userLng)) {
+              return false;
+            }
+            
+            // Haversine formula to calculate distance in meters
+            const R = 6371000; // Earth radius in meters
+            const dLat = (retLat - userLat) * Math.PI / 180;
+            const dLng = (retLng - userLng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(userLat * Math.PI / 180) * Math.cos(retLat * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            
+            return distance <= maxDist;
+          })
+          .map(r => r._id);
+        
+        if (nearbyRetailerIds.length === 0) {
+          return res.json([]);
+        }
+        
+        filter.owner = { $in: nearbyRetailerIds };
       }
-      
-      filter.owner = { $in: retailerIds };
     }
     
     products = await Product.find(filter)
