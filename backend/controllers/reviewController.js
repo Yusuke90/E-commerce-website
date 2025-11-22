@@ -172,7 +172,7 @@ async function updateProductRating(productId) {
     const averageRating = totalRating / reviews.length;
 
     await Product.findByIdAndUpdate(productId, {
-      averageRating: averageRating.toFixed(1),
+      averageRating: Number(averageRating.toFixed(1)), // ✅ FIX: Convert to number, not string
       numberOfReviews: reviews.length
     });
   } catch (err) {

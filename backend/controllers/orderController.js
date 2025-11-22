@@ -206,6 +206,9 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
+    // ✅ FIX: Save old status before updating
+    const oldStatus = order.status;
+    
     order.status = status;
     
     if (status === 'delivered') {
@@ -216,7 +219,7 @@ exports.updateOrderStatus = async (req, res) => {
     if (status === 'cancelled') {
       // ✅ FIX: Only restore stock if order was not already cancelled
       // and if stock was actually deducted (i.e., payment was completed or was cash payment)
-      if (order.status !== 'cancelled' && 
+      if (oldStatus !== 'cancelled' && 
           (order.paymentStatus === 'completed' || order.paymentMethod !== 'online')) {
         // Restore stock
         for (const item of order.items) {

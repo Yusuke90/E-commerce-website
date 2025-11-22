@@ -161,8 +161,9 @@ exports.addProxyProduct = async (req, res) => {
       // Update existing product stock
       existingProduct.stock += qtyToAdd;
       // Update retail price if markup is provided
-      if (markup) {
-        existingProduct.retailPrice = wholesalerProduct.wholesalePrice * (1 + (markup || 0.2));
+      if (markup !== undefined && markup !== null) {
+        const markupValue = Number(markup) || 0.2; // Default 20% if invalid
+        existingProduct.retailPrice = wholesalerProduct.wholesalePrice * (1 + markupValue);
       }
       await existingProduct.save();
       retailerProduct = existingProduct;
@@ -172,7 +173,7 @@ exports.addProxyProduct = async (req, res) => {
         name: wholesalerProduct.name,
         description: wholesalerProduct.description,
         category: wholesalerProduct.category,
-        retailPrice: wholesalerProduct.wholesalePrice * (1 + (markup || 0.2)), // 20% markup default
+        retailPrice: wholesalerProduct.wholesalePrice * (1 + (markup !== undefined && markup !== null ? Number(markup) || 0.2 : 0.2)), // 20% markup default
         stock: qtyToAdd, // Add the specified quantity
         owner: req.user._id,
         ownerType: 'retailer',

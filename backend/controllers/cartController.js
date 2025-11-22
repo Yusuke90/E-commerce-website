@@ -111,12 +111,21 @@ exports.updateCartItem = async (req, res) => {
     } else {
       // Check stock
       const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
       if (product.stock < quantity) {
         return res.status(400).json({ message: `Only ${product.stock} items available` });
       }
       
-      // Update quantity
+      // Update quantity and recalculate price
       cart.items[itemIndex].quantity = quantity;
+      // Recalculate price per unit in case it changed
+      if (product.ownerType === 'wholesaler' && req.user.role === 'retailer') {
+        cart.items[itemIndex].pricePerUnit = pickWholesalePrice(product, quantity);
+      } else {
+        cart.items[itemIndex].pricePerUnit = product.retailPrice;
+      }
     }
     
     await cart.save();

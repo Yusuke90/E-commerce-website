@@ -41,6 +41,12 @@ exports.listPublic = async (req,res) => {
       }).select('_id');
       
       const retailerIds = nearbyRetailers.map(r => r._id);
+      
+      // ✅ FIX: Handle case when no nearby retailers found
+      if (retailerIds.length === 0) {
+        return res.json([]); // Return empty array if no nearby retailers
+      }
+      
       filter.owner = { $in: retailerIds };
     }
     

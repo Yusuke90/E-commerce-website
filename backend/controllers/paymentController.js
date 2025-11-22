@@ -103,7 +103,13 @@ exports.verifyPayment = async (req, res) => {
               console.log(`Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
             } else {
               console.error(`Insufficient stock for product ${product.name} (ID: ${product._id}). Available: ${product.stock}, Required: ${item.quantity}`);
-              // Could handle this case - maybe refund or notify admin
+              // ✅ FIX: Return error if stock insufficient after payment
+              // This should not happen, but handle it gracefully
+              return res.status(400).json({
+                success: false,
+                message: `Insufficient stock for ${product.name}. Payment will be refunded.`,
+                orderId: order._id
+              });
             }
           } else {
             console.error(`Product not found for item: ${item.productId || item.product}`);
@@ -122,17 +128,26 @@ exports.verifyPayment = async (req, res) => {
         const addedProducts = [];
         
         for (const item of order.items) {
-          const wholesalerProduct = item.product;
+          // ✅ FIX: Handle both populated and non-populated product references
+          const productId = item.product?._id || item.product;
+          let wholesalerProduct = item.product?._id ? item.product : null;
           
-          if (!wholesalerProduct) {
-            console.warn(`Product ${item.product} not found, skipping`);
-            continue;
+          // If not populated or missing owner, fetch the product
+          if (!wholesalerProduct || !wholesalerProduct.owner) {
+            wholesalerProduct = await Product.findById(productId);
+            if (!wholesalerProduct) {
+              console.warn(`Product ${productId} not found, skipping`);
+              continue;
+            }
           }
+          
+          // Get wholesaler owner ID (handle both populated and non-populated)
+          const wholesalerOwnerId = wholesalerProduct.owner?._id || wholesalerProduct.owner;
 
           // Check if retailer already has this product
           const existingProduct = await Product.findOne({
             owner: customer._id,
-            sourceWholesaler: wholesalerProduct.owner,
+            sourceWholesaler: wholesalerOwnerId,
             name: wholesalerProduct.name
           });
 
@@ -154,7 +169,7 @@ exports.verifyPayment = async (req, res) => {
               stock: item.quantity,
               owner: customer._id,
               ownerType: 'retailer',
-              sourceWholesaler: wholesalerProduct.owner,
+              sourceWholesaler: wholesalerOwnerId, // ✅ FIX: Use the extracted owner ID
               wholesaleEnabled: false,
               isLocalProduct: wholesalerProduct.isLocalProduct,
               region: wholesalerProduct.region,
