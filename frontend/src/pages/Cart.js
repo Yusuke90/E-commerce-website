@@ -95,12 +95,30 @@ const Cart = () => {
                                                             height: '60px',
                                                             backgroundColor: '#ecf0f1',
                                                             borderRadius: '4px',
+                                                            overflow: 'hidden',
+                                                            flexShrink: 0,
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             justifyContent: 'center',
                                                         }}
                                                     >
-                                                        📦
+                                                        {typeof item.product === 'object' && item.product.images && item.product.images.length > 0 ? (
+                                                            <img
+                                                                src={`http://localhost:5000${item.product.images[0]}`}
+                                                                alt={productName}
+                                                                style={{
+                                                                    width: '100%',
+                                                                    height: '100%',
+                                                                    objectFit: 'cover',
+                                                                }}
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                    e.target.parentElement.innerHTML = '📦';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span>📦</span>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <Link

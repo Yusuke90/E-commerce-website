@@ -312,28 +312,63 @@ const Checkout = () => {
                         <h3 style={{ marginBottom: '20px' }}>Order Summary</h3>
 
                         <div style={{ marginBottom: '20px' }}>
-                            {cartItems.map((item) => (
-                                <div
-                                    key={item._id}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        marginBottom: '10px',
-                                        paddingBottom: '10px',
-                                        borderBottom: '1px solid #eee',
-                                    }}
-                                >
-                                    <div>
-                                        <p style={{ fontWeight: '600', marginBottom: '5px' }}>{item.product.name}</p>
-                                        <p style={{ fontSize: '14px', color: '#7f8c8d' }}>Qty: {item.quantity}</p>
+                            {cartItems.map((item) => {
+                                const product = typeof item.product === 'object' ? item.product : {};
+                                const productImages = product.images || [];
+                                return (
+                                    <div
+                                        key={item._id}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            marginBottom: '10px',
+                                            paddingBottom: '10px',
+                                            borderBottom: '1px solid #eee',
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: '60px',
+                                                height: '60px',
+                                                backgroundColor: '#ecf0f1',
+                                                borderRadius: '4px',
+                                                overflow: 'hidden',
+                                                flexShrink: 0,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        >
+                                            {productImages.length > 0 ? (
+                                                <img
+                                                    src={`http://localhost:5000${productImages[0]}`}
+                                                    alt={product.name || 'Product'}
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        objectFit: 'cover',
+                                                    }}
+                                                    onError={(e) => {
+                                                        e.target.style.display = 'none';
+                                                        e.target.parentElement.innerHTML = '📦';
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span>📦</span>
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ fontWeight: '600', marginBottom: '5px' }}>{product.name || 'Product'}</p>
+                                            <p style={{ fontSize: '14px', color: '#7f8c8d' }}>Qty: {item.quantity}</p>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <p style={{ fontWeight: '600' }}>
+                                                ₹{(item.pricePerUnit * item.quantity).toLocaleString()}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <p style={{ fontWeight: '600' }}>
-                                            ₹{(item.pricePerUnit * item.quantity).toLocaleString()}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>

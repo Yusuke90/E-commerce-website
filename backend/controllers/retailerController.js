@@ -3,6 +3,7 @@ const User = require('../models/userModel');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { resizeImages } = require('../utils/resizeImage');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads/products/';
@@ -35,7 +36,16 @@ exports.createProduct = async (req, res) => {
   try {
     const { name, description, category, retailPrice, stock, sourceWholesaler, isLocalProduct, region } = req.body;
 
-    // ADD THIS LINE
+    // Resize and optimize uploaded images
+    if (req.files && req.files.length > 0) {
+      try {
+        await resizeImages(req.files);
+      } catch (resizeError) {
+        console.error('Error resizing images:', resizeError);
+        // Continue even if resize fails
+      }
+    }
+
     const images = req.files ? req.files.map(file => `/uploads/products/${file.filename}`) : [];
 
     const product = new Product({
@@ -50,7 +60,7 @@ exports.createProduct = async (req, res) => {
       wholesaleEnabled: false,
       isLocalProduct: !!isLocalProduct,
       region,
-      images // ADD THIS LINE
+      images
     });
 
     await product.save();

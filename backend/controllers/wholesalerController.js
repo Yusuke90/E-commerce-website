@@ -3,6 +3,7 @@ const fs = require('fs');
 const csv = require('csv-parse');
 const multer = require('multer');
 const path = require('path');
+const { resizeImages } = require('../utils/resizeImage');
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = 'uploads/products/';
@@ -36,7 +37,16 @@ exports.createProduct = async (req, res) => {
   try {
     const { name, description, category, retailPrice, stock, wholesaleMinQty, wholesalePrice, wholesaleTiers, isLocalProduct, region } = req.body;
 
-    // FIX: Correct image path format
+    // Resize and optimize uploaded images
+    if (req.files && req.files.length > 0) {
+      try {
+        await resizeImages(req.files);
+      } catch (resizeError) {
+        console.error('Error resizing images:', resizeError);
+        // Continue even if resize fails
+      }
+    }
+
     const images = req.files ? req.files.map(file => `/uploads/products/${file.filename}`) : [];
 
     const product = new Product({
@@ -51,7 +61,7 @@ exports.createProduct = async (req, res) => {
       wholesaleMinQty: wholesaleMinQty || 1,
       wholesalePrice,
       wholesaleTiers: wholesaleTiers ? JSON.parse(wholesaleTiers) : [],
-      images,  // ✅ This should work now
+      images,
       isLocalProduct: !!isLocalProduct,
       region
     });
