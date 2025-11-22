@@ -20,8 +20,12 @@ const Register = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState(1); // 1: form, 2: OTP verification
+    const [otp, setOtp] = useState('');
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpTimer, setOtpTimer] = useState(0);
 
-    const { register, login } = useAuth();
+    const { sendRegistrationOTP, verifyRegistrationOTP, verifyLoginOTP } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -31,11 +35,56 @@ const Register = () => {
         });
     };
 
-    const handleSubmit = async (e) => {
+    // Step 1: Send OTP
+    const handleSendOTP = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
         setLoading(true);
+
+        // Basic validation
+        if (!formData.email || !formData.password || !formData.name) {
+            setError('Please fill in all required fields');
+            setLoading(false);
+            return;
+        }
+
+        const result = await sendRegistrationOTP(formData.email);
+
+        if (result.success) {
+            setOtpSent(true);
+            setStep(2);
+            setSuccess('OTP sent to your email! Please check your inbox.');
+            // Start timer (10 minutes)
+            setOtpTimer(600);
+            const timer = setInterval(() => {
+                setOtpTimer((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            setError(result.message);
+        }
+
+        setLoading(false);
+    };
+
+    // Step 2: Verify OTP and complete registration
+    const handleVerifyOTP = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        setLoading(true);
+
+        if (!otp || otp.length !== 6) {
+            setError('Please enter a valid 6-digit OTP');
+            setLoading(false);
+            return;
+        }
 
         // Prepare data based on role
         let userData = {
@@ -63,41 +112,15 @@ const Register = () => {
             };
         }
 
-        const result = await register(userData);
+        const result = await verifyRegistrationOTP(userData, otp);
 
         if (result.success) {
-            setSuccess('Registration successful! Logging you in...');
+            setSuccess('Registration successful! Redirecting to login...');
             
-            // Automatically log in after successful registration
-            try {
-                const loginResult = await login(formData.email, formData.password);
-                
-                if (loginResult.success) {
-                    // Redirect based on role
-                    const user = loginResult.user;
-                    if (user.role === 'admin') {
-                        navigate('/admin');
-                    } else if (user.role === 'retailer') {
-                        navigate('/retailer');
-                    } else if (user.role === 'wholesaler') {
-                        navigate('/wholesaler');
-                    } else {
-                        navigate('/products');
-                    }
-                } else {
-                    // Login failed (e.g., retailer/wholesaler not approved yet)
-                    setError(loginResult.message || 'Registration successful, but your account is pending approval. Please login after admin approval.');
-                    setTimeout(() => {
-                        navigate('/login');
-                    }, 3000);
-                }
-            } catch (err) {
-                // If auto-login fails, still show success and redirect to login
-                setError('Registration successful! Please login to continue.');
-                setTimeout(() => {
-                    navigate('/login');
-                }, 2000);
-            }
+            // Redirect to login after 2 seconds
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
         } else {
             setError(result.message);
         }
@@ -105,16 +128,32 @@ const Register = () => {
         setLoading(false);
     };
 
+    const handleResendOTP = async () => {
+        setError('');
+        setLoading(true);
+        const result = await sendRegistrationOTP(formData.email);
+        if (result.success) {
+            setSuccess('OTP resent to your email!');
+            setOtpTimer(600);
+        } else {
+            setError(result.message);
+        }
+        setLoading(false);
+    };
+
     return (
         <div className="container">
             <div style={{ maxWidth: '500px', margin: '50px auto' }}>
                 <div className="card">
-                    <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>Register</h2>
+                    <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>
+                        {step === 1 ? 'Register' : 'Verify Email'}
+                    </h2>
 
                     {error && <div className="alert alert-error">{error}</div>}
                     {success && <div className="alert alert-success">{success}</div>}
 
-                    <form onSubmit={handleSubmit}>
+                    {step === 1 ? (
+                        <form onSubmit={handleSendOTP}>
                         {/* Role Selection */}
                         <div className="form-group">
                             <label>Register as</label>
@@ -274,9 +313,74 @@ const Register = () => {
                             style={{ width: '100%' }}
                             disabled={loading}
                         >
-                            {loading ? 'Registering...' : 'Register'}
+                            {loading ? 'Sending OTP...' : 'Send OTP'}
                         </button>
                     </form>
+                    ) : (
+                        <form onSubmit={handleVerifyOTP}>
+                            <div className="form-group">
+                                <label>Enter OTP</label>
+                                <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                                    We've sent a 6-digit code to <strong>{formData.email}</strong>
+                                </p>
+                                <input
+                                    type="text"
+                                    value={otp}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                        setOtp(value);
+                                    }}
+                                    placeholder="Enter 6-digit OTP"
+                                    maxLength="6"
+                                    required
+                                    style={{ 
+                                        fontSize: '24px', 
+                                        letterSpacing: '8px', 
+                                        textAlign: 'center',
+                                        fontFamily: 'monospace'
+                                    }}
+                                />
+                                {otpTimer > 0 && (
+                                    <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                                        OTP expires in {Math.floor(otpTimer / 60)}:{(otpTimer % 60).toString().padStart(2, '0')}
+                                    </p>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="btn btn-success"
+                                style={{ width: '100%', marginBottom: '10px' }}
+                                disabled={loading || otp.length !== 6}
+                            >
+                                {loading ? 'Verifying...' : 'Verify & Register'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleResendOTP}
+                                className="btn btn-secondary"
+                                style={{ width: '100%' }}
+                                disabled={loading || otpTimer > 0}
+                            >
+                                {otpTimer > 0 ? `Resend OTP (${Math.floor(otpTimer / 60)}:${(otpTimer % 60).toString().padStart(2, '0')})` : 'Resend OTP'}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStep(1);
+                                    setOtp('');
+                                    setOtpSent(false);
+                                    setOtpTimer(0);
+                                }}
+                                className="btn btn-link"
+                                style={{ width: '100%', marginTop: '10px' }}
+                            >
+                                ← Back to form
+                            </button>
+                        </form>
+                    )}
 
                     <p style={{ textAlign: 'center', marginTop: '20px' }}>
                         Already have an account? <Link to="/login">Login here</Link>

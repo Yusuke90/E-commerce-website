@@ -26,9 +26,50 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = async (email, password) => {
+    // OTP-based registration
+    const sendRegistrationOTP = async (email) => {
         try {
-            const response = await api.post('/auth/login', { email, password });
+            const response = await api.post('/auth/send-registration-otp', { email });
+            return { success: true, message: response.data.message };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to send OTP'
+            };
+        }
+    };
+
+    const verifyRegistrationOTP = async (userData, otp) => {
+        try {
+            const response = await api.post('/auth/verify-registration-otp', {
+                ...userData,
+                otp
+            });
+            return { success: true, message: response.data.message };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'OTP verification failed'
+            };
+        }
+    };
+
+    // OTP-based login
+    const sendLoginOTP = async (email, password) => {
+        try {
+            const response = await api.post('/auth/send-login-otp', { email, password });
+            return { success: true, message: response.data.message };
+        } catch (error) {
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Failed to send OTP'
+            };
+        }
+    };
+
+    const verifyLoginOTP = async (email, otp) => {
+        try {
+            const response = await api.post('/auth/verify-login-otp', { email, otp });
             const { token, user } = response.data;
 
             localStorage.setItem('token', token);
@@ -39,21 +80,20 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             return {
                 success: false,
-                message: error.response?.data?.message || 'Login failed'
+                message: error.response?.data?.message || 'OTP verification failed'
             };
         }
     };
 
+    // Legacy functions (kept for backward compatibility if needed)
+    const login = async (email, password) => {
+        // Use OTP flow instead
+        return await sendLoginOTP(email, password);
+    };
+
     const register = async (userData) => {
-        try {
-            const response = await api.post('/auth/signup', userData);
-            return { success: true, message: response.data.message };
-        } catch (error) {
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Registration failed'
-            };
-        }
+        // Use OTP flow instead
+        return await sendRegistrationOTP(userData.email);
     };
 
     const logout = () => {
@@ -69,6 +109,11 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        // OTP functions
+        sendRegistrationOTP,
+        verifyRegistrationOTP,
+        sendLoginOTP,
+        verifyLoginOTP,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
         isRetailer: user?.role === 'retailer',

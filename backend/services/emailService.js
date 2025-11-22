@@ -138,6 +138,27 @@ class EmailService {
       return { success: false, error: error.message };
     }
   }
+
+  // Send OTP email
+  async sendOTPEmail(email, otp, purpose) {
+    try {
+      const mailOptions = {
+        from: `"LiveMART" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: purpose === 'registration' 
+          ? 'Verify Your Email - Registration OTP' 
+          : 'Login Verification OTP',
+        html: emailTemplates.otpEmail(email, otp, purpose)
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log('OTP email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('Error sending OTP email:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

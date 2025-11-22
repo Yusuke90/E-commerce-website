@@ -239,6 +239,36 @@ const emailTemplates = {
       <p>Best regards,<br>The LiveMART Team</p>
     `;
     return emailTemplates.baseTemplate(content);
+  },
+
+  // OTP email
+  otpEmail: (email, otp, purpose) => {
+    const purposeText = purpose === 'registration' 
+      ? 'complete your registration' 
+      : 'verify your login';
+    
+    const content = `
+      <h2>${purpose === 'registration' ? 'Verify Your Email' : 'Login Verification'} 🔐</h2>
+      <p>Hi there,</p>
+      <p>You requested to ${purposeText} on LiveMART.</p>
+      <p>Your verification code is:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <div style="display: inline-block; background: #f0f0f0; padding: 20px 40px; border-radius: 10px; border: 2px dashed #667eea;">
+          <h1 style="margin: 0; font-size: 36px; letter-spacing: 8px; color: #667eea; font-family: 'Courier New', monospace;">
+            ${otp}
+          </h1>
+        </div>
+      </div>
+      
+      <p><strong>This code will expire in 10 minutes.</strong></p>
+      <p>If you didn't request this code, please ignore this email or contact our support team.</p>
+      <p style="color: #666; font-size: 14px; margin-top: 30px;">
+        For security reasons, never share this code with anyone.
+      </p>
+      <p>Best regards,<br>The LiveMART Team</p>
+    `;
+    return emailTemplates.baseTemplate(content);
   }
 };
 
