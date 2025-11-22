@@ -45,7 +45,13 @@ export const AuthProvider = ({ children }) => {
                 ...userData,
                 otp
             });
-            return { success: true, message: response.data.message };
+            return { 
+                success: true, 
+                message: response.data.message,
+                autoLogin: response.data.autoLogin,
+                token: response.data.token,
+                user: response.data.user
+            };
         } catch (error) {
             return {
                 success: false,
@@ -109,6 +115,7 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        setUser, // Expose setUser for auto-login after registration
         // OTP functions
         sendRegistrationOTP,
         verifyRegistrationOTP,

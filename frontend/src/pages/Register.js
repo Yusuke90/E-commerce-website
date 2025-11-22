@@ -25,7 +25,7 @@ const Register = () => {
     const [otpSent, setOtpSent] = useState(false);
     const [otpTimer, setOtpTimer] = useState(0);
 
-    const { sendRegistrationOTP, verifyRegistrationOTP, verifyLoginOTP } = useAuth();
+    const { sendRegistrationOTP, verifyRegistrationOTP, setUser } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -115,12 +115,30 @@ const Register = () => {
         const result = await verifyRegistrationOTP(userData, otp);
 
         if (result.success) {
-            setSuccess('Registration successful! Redirecting to login...');
-            
-            // Redirect to login after 2 seconds
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
+            // Check if auto-login is enabled (for customers)
+            if (result.autoLogin && result.token && result.user) {
+                // Store token and user
+                localStorage.setItem('token', result.token);
+                localStorage.setItem('user', JSON.stringify(result.user));
+                
+                // Update AuthContext state
+                if (setUser) {
+                    setUser(result.user);
+                }
+                
+                setSuccess('Registration successful! Logging you in...');
+                
+                // Redirect based on role (should be customer)
+                setTimeout(() => {
+                    navigate('/products');
+                }, 1500);
+            } else {
+                // For retailer/wholesaler, redirect to login
+                setSuccess('Registration successful! Please login after admin approval.');
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
+            }
         } else {
             setError(result.message);
         }

@@ -123,11 +123,32 @@ exports.verifyRegistrationOTP = async (req, res) => {
       console.error('Welcome email error:', err)
     );
 
-    let message = 'Registered successfully';
-    if (role === 'wholesaler') message = 'Registered as wholesaler – awaiting admin approval';
-    if (role === 'retailer') message = 'Registered as retailer – awaiting admin approval';
-
-    res.status(201).json({ message });
+    // For customers, automatically log them in by returning token
+    if (role === 'customer' || !role) {
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      
+      res.status(201).json({
+        message: 'Registered successfully',
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+          approved: true
+        },
+        autoLogin: true
+      });
+    } else {
+      // For retailer/wholesaler, they need admin approval
+      let message = 'Registered as wholesaler – awaiting admin approval';
+      if (role === 'retailer') message = 'Registered as retailer – awaiting admin approval';
+      
+      res.status(201).json({
+        message,
+        autoLogin: false
+      });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'server error', error: err.message });
