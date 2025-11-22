@@ -13,6 +13,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import OAuthCallback from './pages/OAuthCallback';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
@@ -35,6 +36,7 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/oauth/callback" element={<OAuthCallback />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/b2b-checkout" element={
