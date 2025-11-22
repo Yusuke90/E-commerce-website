@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const emailService = require('../services/emailService');
 
 // List pending wholesalers
 exports.listPendingWholesalers = async (req,res) => {
@@ -23,6 +24,9 @@ exports.approveWholesaler = async (req,res) => {
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message:'Wholesaler not found' });
+       await emailService.sendApprovalEmail(user).catch(err =>
+      console.error('Approval email error:', err)
+      );
     res.json({ message:'Wholesaler approved', user });
   } catch (err) {
     res.status(500).json({ message: 'server error' });
@@ -52,6 +56,9 @@ exports.approveRetailer = async (req,res) => {
       { new: true }
     ).select('-password');
     if (!user) return res.status(404).json({ message:'Retailer not found' });
+     await emailService.sendApprovalEmail(user).catch(err =>
+      console.error('Approval email error:', err)
+    );
     res.json({ message:'Retailer approved', user });
   } catch (err) {
     res.status(500).json({ message: 'server error' });

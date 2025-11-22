@@ -3,8 +3,9 @@ const Order = require('../models/orderModel');
 const Cart = require('../models/cartModel');
 const Product = require('../models/productModel');
 const pickWholesalePrice = require('../utils/pickWholesalePrice');
+const emailService = require('../services/emailService');
 
-// Create order from cart
+// Create order from cart 
 exports.createOrder = async (req, res) => {
   try {
     const { paymentMethod, deliveryAddress, customerNotes } = req.body;
@@ -216,6 +217,10 @@ exports.updateOrderStatus = async (req, res) => {
     }
     
     await order.save();
+
+    await emailService.sendOrderStatusUpdate(order, order.customer, status).catch(err =>
+    console.error('Status update email error:', err)
+    );
     
     res.json({ message: 'Order status updated', order });
   } catch (err) {

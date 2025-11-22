@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const emailService = require('../services/emailService');
 
 exports.signup = async (req,res) => {
   try {
@@ -46,6 +47,10 @@ exports.signup = async (req,res) => {
     }
 
     await user.save();
+
+    emailService.sendWelcomeEmail(user).catch(err => 
+    console.error('Welcome email error:', err)
+   );
     
     let message = 'Registered successfully';
     if (role === 'wholesaler') message = 'Registered as wholesaler – awaiting admin approval';
