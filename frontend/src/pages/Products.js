@@ -1,23 +1,35 @@
 // Products.js - Beautifully styled with Tailwind CSS
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { calculateDistance, formatDistance } from '../utils/distance';
 
 export default function Products() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, isCustomer } = useAuth();
   const { addToCart } = useCart();
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('all');
+  // Get category from URL query parameter, default to 'all'
+  const [category, setCategory] = useState(searchParams.get('category') || 'all');
   const [search, setSearch] = useState('');
   const [addingToCartId, setAddingToCartId] = useState(null);
   const [nearby, setNearby] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [maxDistance, setMaxDistance] = useState(10); // km
+
+  // Update category when URL query parameter changes
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setCategory(categoryParam);
+    } else {
+      setCategory('all');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchProducts();
@@ -191,7 +203,17 @@ export default function Products() {
             />
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                const newCategory = e.target.value;
+                setCategory(newCategory);
+                // Update URL query parameter
+                if (newCategory === 'all') {
+                  searchParams.delete('category');
+                } else {
+                  searchParams.set('category', newCategory);
+                }
+                setSearchParams(searchParams);
+              }}
               style={{
                 width: '100%',
                 padding: '12px 16px',
