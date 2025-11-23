@@ -87,33 +87,77 @@ exports.createOrder = async (req, res) => {
     
     await order.save();
     
-    // ✅ BUG FIX: Use transaction to prevent race conditions in stock deduction
-    // For online payments, stock will be deducted after payment verification
+    // ✅ BUG FIX: Deduct stock for COD orders (for online payments, stock is deducted after payment verification)
     if (paymentMethod !== 'online') {
-      const session = await Cart.db.startSession();
+      // Try to use transaction if MongoDB replica set is configured, otherwise use direct update
       try {
-        await session.withTransaction(async () => {
-          // Re-check stock within transaction to prevent race conditions
-          for (const cartItem of cart.items) {
-            const product = await Product.findById(cartItem.product._id).session(session);
-            if (!product) {
-              throw new Error(`Product ${cartItem.product._id} not found`);
+        const session = await Cart.db.startSession();
+        try {
+          await session.withTransaction(async () => {
+            // Re-check stock within transaction to prevent race conditions
+            for (const cartItem of cart.items) {
+              const product = await Product.findById(cartItem.product._id).session(session);
+              if (!product) {
+                throw new Error(`Product ${cartItem.product._id} not found`);
+              }
+              if (product.stock < cartItem.quantity) {
+                throw new Error(`Insufficient stock for ${product.name}. Only ${product.stock} available`);
+              }
+              product.stock -= cartItem.quantity;
+              await product.save({ session });
+              console.log(`[Transaction] Deducted ${cartItem.quantity} units from product ${product.name} (Stock: ${product.stock})`);
             }
-            if (product.stock < cartItem.quantity) {
-              throw new Error(`Insufficient stock for ${product.name}. Only ${product.stock} available`);
+          });
+          await session.endSession();
+        } catch (transactionErr) {
+          await session.endSession();
+          // If transaction fails due to replica set not configured, fall back to direct update
+          if (transactionErr.message && transactionErr.message.includes('replica set')) {
+            console.warn('MongoDB replica set not configured, using direct stock update');
+            // Fallback: Direct stock update without transaction
+            for (const cartItem of cart.items) {
+              const product = await Product.findById(cartItem.product._id);
+              if (!product) {
+                await Order.findByIdAndDelete(order._id);
+                return res.status(400).json({ message: `Product ${cartItem.product._id} not found` });
+              }
+              if (product.stock < cartItem.quantity) {
+                await Order.findByIdAndDelete(order._id);
+                return res.status(400).json({ 
+                  message: `Insufficient stock for ${product.name}. Only ${product.stock} available` 
+                });
+              }
+              product.stock -= cartItem.quantity;
+              await product.save();
+              console.log(`[Direct] Deducted ${cartItem.quantity} units from product ${product.name} (Stock: ${product.stock})`);
             }
-            product.stock -= cartItem.quantity;
-            await product.save({ session });
+          } else {
+            // If transaction fails for other reasons, delete the order
+            await Order.findByIdAndDelete(order._id);
+            return res.status(400).json({ 
+              message: transactionErr.message || 'Failed to process order due to stock unavailability' 
+            });
           }
-        });
-      } catch (err) {
-        // If transaction fails, delete the order
-        await Order.findByIdAndDelete(order._id);
-        return res.status(400).json({ 
-          message: err.message || 'Failed to process order due to stock unavailability' 
-        });
-      } finally {
-        await session.endSession();
+        }
+      } catch (sessionErr) {
+        // If session creation fails, use direct update
+        console.warn('Session creation failed, using direct stock update:', sessionErr.message);
+        for (const cartItem of cart.items) {
+          const product = await Product.findById(cartItem.product._id);
+          if (!product) {
+            await Order.findByIdAndDelete(order._id);
+            return res.status(400).json({ message: `Product ${cartItem.product._id} not found` });
+          }
+          if (product.stock < cartItem.quantity) {
+            await Order.findByIdAndDelete(order._id);
+            return res.status(400).json({ 
+              message: `Insufficient stock for ${product.name}. Only ${product.stock} available` 
+            });
+          }
+          product.stock -= cartItem.quantity;
+          await product.save();
+          console.log(`[Direct] Deducted ${cartItem.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+        }
       }
     }
     

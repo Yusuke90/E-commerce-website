@@ -92,43 +92,92 @@ exports.verifyPayment = async (req, res) => {
       // ✅ BUG FIX: Deduct stock for online payments after payment verification with transaction
       if (order.paymentMethod === 'online') {
         const insufficientStockItems = [];
-        const session = await Order.db.startSession();
-        let transactionFailed = false;
+        let stockDeducted = false;
         
+        // Try to use transaction if MongoDB replica set is configured, otherwise use direct update
         try {
-          await session.withTransaction(async () => {
-            for (const item of order.items) {
-              // item.product is already populated, but we need to get fresh data for stock update
-              const productId = item.product._id || item.product;
-              const product = await Product.findById(productId).session(session);
-              if (product) {
-                // Double-check stock availability before deducting (within transaction)
-                if (product.stock >= item.quantity) {
-                  product.stock -= item.quantity;
-                  await product.save({ session });
-                  console.log(`Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+          const session = await Order.db.startSession();
+          try {
+            await session.withTransaction(async () => {
+              for (const item of order.items) {
+                // item.product is already populated, but we need to get fresh data for stock update
+                const productId = item.product._id || item.product;
+                const product = await Product.findById(productId).session(session);
+                if (product) {
+                  // Double-check stock availability before deducting (within transaction)
+                  if (product.stock >= item.quantity) {
+                    product.stock -= item.quantity;
+                    await product.save({ session });
+                    console.log(`[Transaction] Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+                  } else {
+                    console.error(`Insufficient stock for product ${product.name} (ID: ${product._id}). Available: ${product.stock}, Required: ${item.quantity}`);
+                    insufficientStockItems.push({ product: product.name, available: product.stock, required: item.quantity });
+                    throw new Error(`Insufficient stock for ${product.name}`);
+                  }
                 } else {
-                  console.error(`Insufficient stock for product ${product.name} (ID: ${product._id}). Available: ${product.stock}, Required: ${item.quantity}`);
-                  insufficientStockItems.push({ product: product.name, available: product.stock, required: item.quantity });
-                  throw new Error(`Insufficient stock for ${product.name}`);
+                  console.error(`Product not found for item: ${item.productId || item.product}`);
+                  insufficientStockItems.push({ product: 'Unknown', available: 0, required: item.quantity });
+                  throw new Error(`Product not found`);
                 }
-              } else {
-                console.error(`Product not found for item: ${item.productId || item.product}`);
-                insufficientStockItems.push({ product: 'Unknown', available: 0, required: item.quantity });
-                throw new Error(`Product not found`);
               }
+            });
+            stockDeducted = true;
+            await session.endSession();
+          } catch (transactionError) {
+            await session.endSession();
+            // If transaction fails due to replica set not configured, fall back to direct update
+            if (transactionError.message && transactionError.message.includes('replica set')) {
+              console.warn('MongoDB replica set not configured, using direct stock update');
+              // Fallback: Direct stock update without transaction
+              for (const item of order.items) {
+                const productId = item.product._id || item.product;
+                const product = await Product.findById(productId);
+                if (product) {
+                  if (product.stock >= item.quantity) {
+                    product.stock -= item.quantity;
+                    await product.save();
+                    console.log(`[Direct] Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+                    stockDeducted = true;
+                  } else {
+                    console.error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
+                    insufficientStockItems.push({ product: product.name, available: product.stock, required: item.quantity });
+                  }
+                } else {
+                  console.error(`Product not found for item: ${productId}`);
+                  insufficientStockItems.push({ product: 'Unknown', available: 0, required: item.quantity });
+                }
+              }
+            } else {
+              // Transaction failed for other reasons
+              console.error('Transaction failed:', transactionError.message);
+              throw transactionError;
             }
-          });
-        } catch (transactionError) {
-          // Transaction will automatically rollback
-          transactionFailed = true;
-          console.error('Transaction failed:', transactionError.message);
-        } finally {
-          await session.endSession();
+          }
+        } catch (sessionErr) {
+          // If session creation fails, use direct update
+          console.warn('Session creation failed, using direct stock update:', sessionErr.message);
+          for (const item of order.items) {
+            const productId = item.product._id || item.product;
+            const product = await Product.findById(productId);
+            if (product) {
+              if (product.stock >= item.quantity) {
+                product.stock -= item.quantity;
+                await product.save();
+                console.log(`[Direct] Deducted ${item.quantity} units from product ${product.name} (Stock: ${product.stock})`);
+                stockDeducted = true;
+              } else {
+                console.error(`Insufficient stock for product ${product.name}. Available: ${product.stock}, Required: ${item.quantity}`);
+                insufficientStockItems.push({ product: product.name, available: product.stock, required: item.quantity });
+              }
+            } else {
+              console.error(`Product not found for item: ${productId}`);
+              insufficientStockItems.push({ product: 'Unknown', available: 0, required: item.quantity });
+            }
+          }
         }
         
-        // ✅ BUG FIX: If transaction failed due to insufficient stock, refund payment
-        if (transactionFailed && insufficientStockItems.length > 0) {
+        // ✅ BUG FIX: If stock deduction failed due to insufficient stock, refund payment
+        if (insufficientStockItems.length > 0) {
           console.error('Insufficient stock detected. Initiating refund...');
           
           try {

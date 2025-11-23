@@ -20,6 +20,7 @@ import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
+import OrderDetails from './pages/OrderDetails';
 import AdminDashboard from './pages/AdminDashboard';
 import RetailerDashboard from './pages/RetailerDashboard';
 import WholesalerDashboard from './pages/WholesalerDashboard';
@@ -60,6 +61,11 @@ function App() {
                 <Route path="/orders" element={
                   <PrivateRoute>
                     <Orders />
+                  </PrivateRoute>
+                } />
+                <Route path="/orders/:id" element={
+                  <PrivateRoute>
+                    <OrderDetails />
                   </PrivateRoute>
                 } />
 
