@@ -297,6 +297,18 @@ const Register = () => {
                                         required
                                     />
                                 </div>
+                                <div className="form-group">
+                                    <label>Shop Location (Optional - can be updated later)</label>
+                                    <LocationPicker
+                                        onLocationSelect={(loc) => {
+                                            setFormData({
+                                                ...formData,
+                                                location: loc
+                                            });
+                                        }}
+                                        initialLocation={formData.location ? [formData.location.latitude, formData.location.longitude] : null}
+                                    />
+                                </div>
                             </>
                         )}
 

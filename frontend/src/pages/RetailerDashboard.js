@@ -2,10 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useB2BCart } from '../context/B2BCartContext';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
+import LocationPicker from '../components/LocationPicker';
 
 export default function RetailerDashboard() {
   const { success, error, confirm } = useToast();
-  const [activeTab, setActiveTab] = useState('browse'); // browse, myProducts, addProduct, orders
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('browse'); // browse, myProducts, addProduct, orders, location
   const [wholesalerProducts, setWholesalerProducts] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -27,13 +30,65 @@ export default function RetailerDashboard() {
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
 
+  // Location state
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
   useEffect(() => {
     fetchWholesalerProducts();
     fetchMyProducts();
     if (activeTab === 'orders') {
       fetchOrders();
     }
+    if (activeTab === 'location') {
+      fetchCurrentLocation();
+    }
   }, [activeTab]);
+
+  const fetchCurrentLocation = () => {
+    // Get location from user context if available
+    if (user?.retailerInfo?.location?.coordinates) {
+      const [lng, lat] = user.retailerInfo.location.coordinates;
+      setCurrentLocation({ latitude: lat, longitude: lng });
+    }
+  };
+
+  const handleLocationUpdate = async (location) => {
+    if (!location || !location.latitude || !location.longitude) {
+      error('Please select a location on the map');
+      return;
+    }
+
+    setLocationLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/retailer/location', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          latitude: location.latitude,
+          longitude: location.longitude
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentLocation(location);
+        success('Location updated successfully! Customers can now find your products nearby.');
+      } else {
+        const err = await response.json();
+        error(err.message || 'Failed to update location');
+      }
+    } catch (err) {
+      console.error('Error updating location:', err);
+      error('Failed to update location. Please try again.');
+    } finally {
+      setLocationLoading(false);
+    }
+  };
 
   const fetchWholesalerProducts = async () => {
     try {
@@ -303,6 +358,19 @@ export default function RetailerDashboard() {
               }}
             >
               📦 Orders
+            </button>
+            <button
+              onClick={() => setActiveTab('location')}
+              className={`flex-1 px-6 py-4 font-semibold transition-all duration-300 relative ${
+                activeTab === 'location'
+                  ? 'text-teal-600 bg-teal-50'
+                  : 'text-gray-600 hover:text-teal-600 hover:bg-teal-50'
+              }`}
+              style={{
+                borderBottom: activeTab === 'location' ? '3px solid #14b8a6' : '3px solid transparent'
+              }}
+            >
+              📍 Location
             </button>
           </div>
 
@@ -710,6 +778,54 @@ export default function RetailerDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Location Tab */}
+            {activeTab === 'location' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-4">Shop Location</h2>
+                <p className="text-gray-600 mb-6">
+                  Set your shop location so customers can find your products nearby. This helps customers discover your products when they search for nearby items.
+                </p>
+
+                {currentLocation && (
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 mb-2">
+                      <strong>Current Location:</strong>
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Latitude: {currentLocation.latitude.toFixed(6)}, Longitude: {currentLocation.longitude.toFixed(6)}
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-white p-6 rounded-lg border border-gray-200">
+                  <LocationPicker
+                    onLocationSelect={(loc) => {
+                      setCurrentLocation(loc);
+                    }}
+                    initialLocation={currentLocation ? [currentLocation.latitude, currentLocation.longitude] : null}
+                  />
+                  <div className="mt-4">
+                    <button
+                      onClick={() => {
+                        if (currentLocation) {
+                          handleLocationUpdate(currentLocation);
+                        } else {
+                          error('Please select a location on the map first');
+                        }
+                      }}
+                      disabled={locationLoading || !currentLocation}
+                      className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    >
+                      {locationLoading ? '⏳ Updating Location...' : '💾 Save Location'}
+                    </button>
+                  </div>
+                  <p className="mt-4 text-sm text-gray-600">
+                    💡 <strong>Tip:</strong> Click on the map to select your shop location, or use the "Use My Location" button to automatically detect your current location.
+                  </p>
+                </div>
               </div>
             )}
           </div>
