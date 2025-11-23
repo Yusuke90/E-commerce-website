@@ -1,8 +1,10 @@
 // RetailerDashboard.js - Complete Component with B2B Cart
 import React, { useState, useEffect } from 'react';
 import { useB2BCart } from '../context/B2BCartContext';
+import { useToast } from '../context/ToastContext';
 
 export default function RetailerDashboard() {
+  const { success, error } = useToast();
   const [activeTab, setActiveTab] = useState('browse'); // browse, myProducts, addProduct, orders
   const [wholesalerProducts, setWholesalerProducts] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
@@ -72,9 +74,9 @@ export default function RetailerDashboard() {
       });
       const data = await response.json();
       setOrders(data);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      alert('Failed to load orders');
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      error('Failed to load orders');
     } finally {
       setOrdersLoading(false);
     }
@@ -93,15 +95,15 @@ export default function RetailerDashboard() {
       });
 
       if (response.ok) {
-        alert('Order status updated successfully!');
+        success('Order status updated successfully!');
         fetchOrders();
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.message}`);
+        const err = await response.json();
+        error(`Error: ${err.message}`);
       }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      alert('Failed to update order status');
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      error('Failed to update order status');
     }
   };
 
@@ -136,7 +138,7 @@ export default function RetailerDashboard() {
 
     const qty = parseInt(quantity);
     if (qty < (product.wholesaleMinQty || 1) || qty > product.stock) {
-      alert(`Quantity must be between ${product.wholesaleMinQty || 1} and ${product.stock}`);
+      error(`Quantity must be between ${product.wholesaleMinQty || 1} and ${product.stock}`);
       return;
     }
 
@@ -158,23 +160,23 @@ export default function RetailerDashboard() {
 
       if (response.ok) {
         const data = await response.json();
-        alert(data.message || 'Product added to your store!');
+        success(data.message || 'Product added to your store!');
         fetchMyProducts();
         fetchWholesalerProducts(); // Refresh to show updated stock
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.message}`);
+        const err = await response.json();
+        error(`Error: ${err.message}`);
       }
-    } catch (error) {
-      console.error('Error adding proxy product:', error);
-      alert('Failed to add product');
+    } catch (err) {
+      console.error('Error adding proxy product:', err);
+      error('Failed to add product');
     }
   };
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 5) {
-      alert('Maximum 5 images allowed');
+      error('Maximum 5 images allowed');
       return;
     }
     setImages(files);
@@ -203,7 +205,7 @@ export default function RetailerDashboard() {
       });
 
       if (response.ok) {
-        alert('Product added successfully!');
+        success('Product added successfully!');
         setFormData({
           name: '', description: '', category: 'Electronics',
           retailPrice: '', stock: ''
@@ -213,8 +215,8 @@ export default function RetailerDashboard() {
         fetchMyProducts();
         setActiveTab('myProducts');
       }
-    } catch (error) {
-      alert('Failed to add product');
+    } catch (err) {
+      error('Failed to add product');
     } finally {
       setLoading(false);
     }
@@ -390,7 +392,7 @@ export default function RetailerDashboard() {
                               onClick={() => {
                                 const qty = orderQuantities[product._id] || product.wholesaleMinQty || 1;
                                 addToB2BCart(product, qty);
-                                alert('Added to B2B cart!');
+                                success('Added to B2B cart!');
                               }}
                               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-2.5 rounded-lg font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
                             >

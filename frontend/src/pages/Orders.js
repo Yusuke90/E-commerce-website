@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import Loading from '../components/Loading';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { success, error: showError } = useToast();
 
   useEffect(() => {
     fetchOrders();
@@ -30,10 +32,10 @@ const Orders = () => {
 
     try {
       await api.put(`/orders/${orderId}/cancel`);
-      alert('Order cancelled successfully');
+      success('Order cancelled successfully');
       fetchOrders(); // Refresh orders
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel order');
+      showError(err.response?.data?.message || 'Failed to cancel order');
     }
   };
 

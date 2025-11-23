@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useB2BCart } from '../context/B2BCartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { createPaymentOrder, verifyPayment, initiateRazorpayPayment } from '../services/payment';
 
 export default function B2BCheckout() {
   const { b2bCart, clearB2BCart, b2bTotal, removeFromB2BCart, updateB2BCartQuantity } = useB2BCart();
   const { user } = useAuth();
+  const { success, error: showError } = useToast();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -49,7 +51,7 @@ export default function B2BCheckout() {
       if (formData.paymentMethod === 'online') {
         await handleOnlinePayment(order);
       } else {
-        alert('B2B Order placed! Wholesaler will process it.');
+        success('B2B Order placed! Wholesaler will process it.');
         clearB2BCart();
         navigate('/retailer');
       }
@@ -76,7 +78,7 @@ export default function B2BCheckout() {
             ...response,
             orderId: order._id
           });
-          alert('Payment successful!');
+          success('Payment successful!');
           clearB2BCart();
           navigate('/retailer');
         },

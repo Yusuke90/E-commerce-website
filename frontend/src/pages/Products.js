@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import { calculateDistance, formatDistance } from '../utils/distance';
 
 export default function Products() {
@@ -10,6 +11,7 @@ export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, isCustomer } = useAuth();
   const { addToCart } = useCart();
+  const { success, error, warning } = useToast();
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,11 +48,11 @@ export default function Products() {
           setNearby(true);
         },
         (error) => {
-          alert('Unable to get your location. Please enable location access.');
+          warning('Unable to get your location. Please enable location access.');
         }
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      warning('Geolocation is not supported by your browser.');
     }
   };
 
@@ -107,7 +109,7 @@ export default function Products() {
       }
     } catch (error) {
       console.error('Error fetching products:', error);
-      alert(`Error loading products: ${error.message}. Please try again.`);
+      error(`Error loading products: ${error.message}. Please try again.`);
       setProducts([]); // Set empty array on error
     } finally {
       setLoading(false);
@@ -141,9 +143,9 @@ export default function Products() {
     const result = await addToCart(product._id, 1);
 
     if (!result.success) {
-      alert(result.message);
+      error(result.message);
     } else {
-      alert('Added to cart!');
+      success('Added to cart!');
     }
 
     setAddingToCartId(null);

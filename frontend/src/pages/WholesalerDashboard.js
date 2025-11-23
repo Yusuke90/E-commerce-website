@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 
 export default function WholesalerDashboard() {
+  const { success, error } = useToast();
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -51,9 +53,9 @@ export default function WholesalerDashboard() {
       });
       const data = await response.json();
       setOrders(data);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      alert('Failed to load orders');
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      error('Failed to load orders');
     } finally {
       setOrdersLoading(false);
     }
@@ -72,15 +74,15 @@ export default function WholesalerDashboard() {
       });
 
       if (response.ok) {
-        alert('Order status updated successfully!');
+        success('Order status updated successfully!');
         fetchOrders();
       } else {
-        const error = await response.json();
-        alert(`Error: ${error.message}`);
+        const err = await response.json();
+        error(`Error: ${err.message}`);
       }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      alert('Failed to update order status');
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      error('Failed to update order status');
     }
   };
 
@@ -109,7 +111,7 @@ export default function WholesalerDashboard() {
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     if (files.length > 5) {
-      alert('Maximum 5 images allowed');
+      error('Maximum 5 images allowed');
       return;
     }
     setImages(files);
@@ -134,7 +136,7 @@ export default function WholesalerDashboard() {
       });
 
       if (response.ok) {
-        alert('Product added successfully!');
+        success('Product added successfully!');
         setShowForm(false);
         setFormData({
           name: '', description: '', category: 'Electronics',
@@ -144,8 +146,8 @@ export default function WholesalerDashboard() {
         setImagePreviews([]);
         fetchProducts();
       }
-    } catch (error) {
-      alert('Failed to add product');
+    } catch (err) {
+      error('Failed to add product');
     } finally {
       setLoading(false);
     }

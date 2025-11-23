@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { createPaymentOrder, verifyPayment, initiateRazorpayPayment } from '../services/payment';
 import Loading from '../components/Loading';
@@ -9,6 +10,7 @@ import Loading from '../components/Loading';
 const Checkout = () => {
     const { cart, loading: cartLoading, clearCart } = useCart();
     const { user } = useAuth();
+    const { success, error: showError } = useToast();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -69,7 +71,7 @@ const Checkout = () => {
                 await handleOnlinePayment(order, total);
             } else {
                 // Cash on delivery - order is complete
-                alert('Order placed successfully!');
+                success('Order placed successfully!');
                 await clearCart();
                 navigate('/orders');
             }
@@ -110,10 +112,11 @@ const Checkout = () => {
                         const verifyResponse = await verifyPayment(verificationData);
 
                         if (verifyResponse.success) {
-                            alert('Payment successful! Order confirmed.');
+                            success('Payment successful! Order confirmed.');
                             await clearCart();
                             navigate('/orders');
                         } else {
+                            showError('Payment verification failed');
                             setError('Payment verification failed');
                         }
                     } catch (err) {

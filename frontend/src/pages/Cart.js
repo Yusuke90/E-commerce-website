@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import Loading from '../components/Loading';
 
 const Cart = () => {
     const { cart, loading, updateCartItem, removeFromCart } = useCart();
+    const { success, error } = useToast();
     const navigate = useNavigate();
 
     const handleQuantityChange = async (productId, newQuantity) => {
@@ -16,11 +18,13 @@ const Cart = () => {
         try {
             const result = await updateCartItem(productId, newQuantity);
             if (!result.success) {
-                alert(result.message || 'Failed to update cart');
+                error(result.message || 'Failed to update cart');
+            } else {
+                success('Cart updated');
             }
-        } catch (error) {
-            console.error('Error updating cart:', error);
-            alert('Failed to update cart. Please try again.');
+        } catch (err) {
+            console.error('Error updating cart:', err);
+            error('Failed to update cart. Please try again.');
         }
     };
 
@@ -31,11 +35,13 @@ const Cart = () => {
         try {
             const result = await removeFromCart(productId);
             if (!result.success) {
-                alert(result.message || 'Failed to remove item');
+                error(result.message || 'Failed to remove item');
+            } else {
+                success('Item removed from cart');
             }
-        } catch (error) {
-            console.error('Error removing from cart:', error);
-            alert('Failed to remove item. Please try again.');
+        } catch (err) {
+            console.error('Error removing from cart:', err);
+            error('Failed to remove item. Please try again.');
         }
     };
 

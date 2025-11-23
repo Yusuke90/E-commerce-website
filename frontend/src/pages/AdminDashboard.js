@@ -1,7 +1,9 @@
 // AdminDashboard.js - Complete Component
 import React, { useState, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 
 export default function AdminDashboard() {
+  const { success, error } = useToast();
   const [pendingWholesalers, setPendingWholesalers] = useState([]);
   const [pendingRetailers, setPendingRetailers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,14 +47,14 @@ export default function AdminDashboard() {
       });
 
       if (response.ok) {
-        alert('Wholesaler approved successfully!');
+        success('Wholesaler approved successfully!');
         fetchPendingUsers(); // Refresh the list
       } else {
-        alert('Failed to approve wholesaler');
+        error('Failed to approve wholesaler');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error approving wholesaler');
+    } catch (err) {
+      console.error('Error:', err);
+      error('Error approving wholesaler');
     }
   };
 
@@ -65,14 +67,14 @@ export default function AdminDashboard() {
       });
 
       if (response.ok) {
-        alert('Retailer approved successfully!');
+        success('Retailer approved successfully!');
         fetchPendingUsers(); // Refresh the list
       } else {
-        alert('Failed to approve retailer');
+        error('Failed to approve retailer');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error approving retailer');
+    } catch (err) {
+      console.error('Error:', err);
+      error('Error approving retailer');
     }
   };
 

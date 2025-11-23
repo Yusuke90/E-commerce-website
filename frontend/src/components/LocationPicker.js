@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { useToast } from '../context/ToastContext';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -22,6 +23,7 @@ function LocationMarker({ position, setPosition }) {
 }
 
 const LocationPicker = ({ onLocationSelect, initialLocation }) => {
+  const { error, warning } = useToast();
   const [position, setPosition] = useState(initialLocation || [28.6139, 77.2090]); // Default: Delhi, India
   const [manualInput, setManualInput] = useState(false);
   const [lat, setLat] = useState(initialLocation?.[0] || '');
@@ -39,7 +41,7 @@ const LocationPicker = ({ onLocationSelect, initialLocation }) => {
     const lngNum = parseFloat(lng);
     
     if (isNaN(latNum) || isNaN(lngNum) || latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
-      alert('Please enter valid coordinates');
+      error('Please enter valid coordinates');
       return;
     }
     
@@ -53,12 +55,12 @@ const LocationPicker = ({ onLocationSelect, initialLocation }) => {
         (position) => {
           setPosition([position.coords.latitude, position.coords.longitude]);
         },
-        (error) => {
-          alert('Unable to get your location. Please select on map or enter manually.');
+        (err) => {
+          warning('Unable to get your location. Please select on map or enter manually.');
         }
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      warning('Geolocation is not supported by your browser.');
     }
   };
 

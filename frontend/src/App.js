@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { B2BCartProvider } from './context/B2BCartContext';
+import { ToastProvider } from './context/ToastContext';
 import B2BCheckout from './pages/B2BCheckout';
 
 // Components
@@ -27,12 +28,13 @@ import './App.css';
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <CartProvider>
-          <B2BCartProvider>
-            <div className="App">
-              <Navbar />
-              <Routes>
+      <ToastProvider>
+        <AuthProvider>
+          <CartProvider>
+            <B2BCartProvider>
+              <div className="App">
+                <Navbar />
+                <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -84,11 +86,12 @@ function App() {
 
                 {/* Catch all */}
                 <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </div>
-          </B2BCartProvider>
-        </CartProvider>
-      </AuthProvider>
+                </Routes>
+              </div>
+            </B2BCartProvider>
+          </CartProvider>
+        </AuthProvider>
+      </ToastProvider>
     </Router>
   );
 }
