@@ -133,16 +133,16 @@ const ProductDetail = () => {
     if (!product) return <div className="container">Product not found</div>;
 
     return (
-        <div className="container">
-            <button
-                onClick={() => navigate(-1)}
-                className="btn btn-secondary"
-                style={{ marginBottom: '20px' }}
-            >
-                ← Back
-            </button>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+            <div className="max-w-6xl mx-auto">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="mb-6 bg-white hover:bg-gray-100 text-gray-800 px-4 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 inline-flex items-center gap-2"
+                >
+                    ← Back
+                </button>
 
-            <div className="card">
+                <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
                     {/* Product Image */}
                     <div>
@@ -316,7 +316,7 @@ const ProductDetail = () => {
             </div>
 
             {/* Reviews Section */}
-            <div id="reviews-section" className="card" style={{ marginTop: '30px' }}>
+            <div id="reviews-section" className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 mt-6">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2>Reviews & Ratings</h2>
                     {isAuthenticated && isCustomer && (

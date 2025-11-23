@@ -123,11 +123,12 @@ const Home = () => {
     };
 
     return (
-        <div className="container" style={{ paddingBottom: '40px' }}>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+            <div className="max-w-7xl mx-auto p-6">
             {/* Hero Section */}
             <div style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                borderRadius: '12px',
+                borderRadius: '16px',
                 padding: '60px 40px',
                 textAlign: 'center',
                 color: 'white',
@@ -561,6 +562,7 @@ const Home = () => {
                         <p>Competitive pricing with wholesale options</p>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

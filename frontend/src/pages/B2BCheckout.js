@@ -124,11 +124,12 @@ export default function B2BCheckout() {
   const total = subtotal + tax + delivery;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '32px 16px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '24px' }}>
-          B2B Checkout - Order from Wholesaler
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">B2B Checkout</h1>
+          <p style={{ color: '#6b7280' }}>Order from wholesaler</p>
+        </div>
 
         {error && (
           <div style={{
@@ -144,8 +145,8 @@ export default function B2BCheckout() {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">
               Delivery Information
             </h2>
 
@@ -226,8 +227,8 @@ export default function B2BCheckout() {
             </form>
           </div>
 
-          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '20px' }}>
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">
               Order Summary
             </h2>
 

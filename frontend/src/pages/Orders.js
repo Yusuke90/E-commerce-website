@@ -60,26 +60,28 @@ const Orders = () => {
   if (loading) return <Loading />;
 
   return (
-    <div className="container">
-      <div className="page-header">
-        <h1>My Orders</h1>
-        <p>Track and manage your orders</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Orders</h1>
+          <p style={{ color: '#6b7280' }}>Track and manage your orders</p>
+        </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       {orders.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <h3>No orders yet</h3>
-          <p style={{ marginBottom: '20px' }}>Start shopping to place your first order</p>
-          <Link to="/products" className="btn btn-primary">
+        <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">No orders yet</h3>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>Start shopping to place your first order</p>
+          <Link to="/products" className="inline-block bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
             Browse Products
           </Link>
         </div>
       ) : (
-        <div>
+        <div className="space-y-6">
           {orders.map((order) => (
-            <div key={order._id} className="card" style={{ marginBottom: '20px' }}>
+            <div key={order._id} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300">
               {/* Order Header */}
               <div
                 style={{

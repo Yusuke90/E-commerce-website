@@ -79,12 +79,12 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Approve pending wholesalers and retailers</p>
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
+          <p className="text-gray-600">Approve pending wholesalers and retailers</p>
         </div>
 
         {/* Stats */}
@@ -100,8 +100,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="flex border-b">
+        <div className="bg-white rounded-xl shadow-lg mb-6 border border-gray-100 overflow-hidden">
+          <div className="flex border-b bg-gradient-to-r from-gray-50 to-white">
             <button
               onClick={() => setActiveTab('wholesalers')}
               className={`flex-1 px-6 py-4 font-semibold ${
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
                         {pendingWholesalers.map(wholesaler => (
                           <div
                             key={wholesaler._id}
-                            className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition"
+                            className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:shadow-xl hover:border-blue-300 transition-all duration-300"
                           >
                             <div className="flex justify-between items-start">
                               <div className="flex-1">
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
                         {pendingRetailers.map(retailer => (
                           <div
                             key={retailer._id}
-                            className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition"
+                            className="bg-white border-2 border-gray-200 rounded-xl p-6 hover:shadow-xl hover:border-green-300 transition-all duration-300"
                           >
                             <div className="flex justify-between items-start">
                               <div className="flex-1">

@@ -185,12 +185,17 @@ const Register = () => {
     };
 
     return (
-        <div className="container">
-            <div style={{ maxWidth: '500px', margin: '50px auto' }}>
-                <div className="card">
-                    <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>
-                        {step === 1 ? 'Register' : 'Verify Email'}
-                    </h2>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6 py-12">
+            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+                    <div className="text-center mb-6">
+                        <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                            {step === 1 ? 'Create Account' : 'Verify Email'}
+                        </h2>
+                        <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                            {step === 1 ? 'Join us and start shopping today' : 'Enter the OTP sent to your email'}
+                        </p>
+                    </div>
 
                     {error && <div className="alert alert-error">{error}</div>}
                     {success && <div className="alert alert-success">{success}</div>}

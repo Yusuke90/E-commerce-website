@@ -57,32 +57,33 @@ const Cart = () => {
 
     if (!cart || cart.items.length === 0) {
         return (
-            <div className="container">
-                <div className="page-header">
-                    <h1>Shopping Cart</h1>
-                </div>
-                <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-                    <h3>Your cart is empty</h3>
-                    <p style={{ marginBottom: '20px' }}>Start shopping to add items to your cart</p>
-                    <Link to="/products" className="btn btn-primary">
-                        Browse Products
-                    </Link>
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 text-center">
+                        <div className="text-6xl mb-4">🛒</div>
+                        <h1 className="text-2xl font-bold text-gray-800 mb-2">Your cart is empty</h1>
+                        <p style={{ color: '#6b7280', marginBottom: '24px' }}>Start shopping to add items to your cart</p>
+                        <Link to="/products" className="inline-block bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
+                            Browse Products
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="container">
-            <div className="page-header">
-                <h1>Shopping Cart</h1>
-                <p>{cart.items.length} items in your cart</p>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+            <div className="max-w-6xl mx-auto">
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Shopping Cart</h1>
+                    <p style={{ color: '#6b7280' }}>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'} in your cart</p>
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
                 {/* Cart Items */}
                 <div>
-                    <div className="card">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
                         <table className="cart-table">
                             <thead>
                                 <tr>
@@ -199,8 +200,8 @@ const Cart = () => {
 
                 {/* Cart Summary */}
                 <div>
-                    <div className="card">
-                        <h3 style={{ marginBottom: '20px' }}>Order Summary</h3>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                        <h3 className="text-xl font-bold text-gray-800 mb-6">Order Summary</h3>
                         <div style={{ marginBottom: '15px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                                 <span>Subtotal:</span>
@@ -257,14 +258,13 @@ const Cart = () => {
 
                         <button
                             onClick={() => navigate('/checkout')}
-                            className="btn btn-success"
-                            style={{ width: '100%', padding: '12px', fontSize: '16px' }}
+                            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                         >
                             Proceed to Checkout
                         </button>
 
-                        <Link to="/products">
-                            <button className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }}>
+                        <Link to="/products" className="block">
+                            <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold mt-3 transition-all duration-200">
                                 Continue Shopping
                             </button>
                         </Link>

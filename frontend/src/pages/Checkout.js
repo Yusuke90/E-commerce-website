@@ -143,13 +143,18 @@ const Checkout = () => {
 
     if (cartItems.length === 0) {
         return (
-            <div className="container">
-                <div className="alert alert-warning">
-                    Your cart is empty. Add items before checking out.
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6 flex items-center justify-center">
+                <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 text-center max-w-md">
+                    <div className="text-6xl mb-4">🛒</div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Your cart is empty</h2>
+                    <p style={{ color: '#6b7280', marginBottom: '24px' }}>Add items before checking out</p>
+                    <button 
+                        onClick={() => navigate('/products')} 
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                    >
+                        Browse Products
+                    </button>
                 </div>
-                <button onClick={() => navigate('/products')} className="btn btn-primary">
-                    Browse Products
-                </button>
             </div>
         );
     }
@@ -160,10 +165,12 @@ const Checkout = () => {
     const total = subtotal + tax + delivery;
 
     return (
-        <div className="container">
-            <div className="page-header">
-                <h1>Checkout</h1>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
+            <div className="max-w-6xl mx-auto">
+                <div className="mb-6">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Checkout</h1>
+                    <p style={{ color: '#6b7280' }}>Complete your order</p>
+                </div>
 
             {error && <div className="alert alert-error">{error}</div>}
             {processingPayment && (
@@ -172,9 +179,9 @@ const Checkout = () => {
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-                <div className="card">
-                    <h3 style={{ marginBottom: '20px' }}>Delivery Information</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+                <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                    <h3 className="text-xl font-bold text-gray-800 mb-6">Delivery Information</h3>
 
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
@@ -309,10 +316,10 @@ const Checkout = () => {
                     </form>
                 </div>
 
-                {/* Order Summary - same as before */}
+                {/* Order Summary */}
                 <div>
-                    <div className="card">
-                        <h3 style={{ marginBottom: '20px' }}>Order Summary</h3>
+                    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+                        <h3 className="text-xl font-bold text-gray-800 mb-6">Order Summary</h3>
 
                         <div style={{ marginBottom: '20px' }}>
                             {cartItems.map((item) => {

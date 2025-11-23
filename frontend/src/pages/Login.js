@@ -136,12 +136,17 @@ const Login = () => {
     };
 
     return (
-        <div className="container">
-            <div style={{ maxWidth: '400px', margin: '50px auto' }}>
-                <div className="card">
-                    <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>
-                        {step === 1 ? 'Login' : 'Verify Email'}
-                    </h2>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center p-6">
+            <div style={{ maxWidth: '450px', width: '100%' }}>
+                <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+                    <div className="text-center mb-6">
+                        <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+                            {step === 1 ? 'Welcome Back' : 'Verify Email'}
+                        </h2>
+                        <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                            {step === 1 ? 'Sign in to your account' : 'Enter the OTP sent to your email'}
+                        </p>
+                    </div>
 
                     {error && (
                         <div className="alert alert-error">
