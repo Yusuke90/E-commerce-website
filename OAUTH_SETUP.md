@@ -6,8 +6,9 @@ Add these to your `backend/.env` file:
 
 ```env
 # OAuth - Google
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_CLIENT_ID=695184859814-07n3um9b3fp463qrnj8bsi02l0i9s79q.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
 
 # OAuth - Facebook
 FACEBOOK_APP_ID=your_facebook_app_id
