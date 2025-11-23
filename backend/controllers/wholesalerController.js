@@ -37,6 +37,33 @@ exports.createProduct = async (req, res) => {
   try {
     const { name, description, category, retailPrice, stock, wholesaleMinQty, wholesalePrice, wholesaleTiers, isLocalProduct, region } = req.body;
 
+    // Validate required fields
+    if (!name || name.trim().length < 3) {
+      return res.status(400).json({ message: 'Product name must be at least 3 characters' });
+    }
+
+    if (!description || description.trim().length < 10) {
+      return res.status(400).json({ message: 'Product description must be at least 10 characters' });
+    }
+
+    if (!retailPrice || isNaN(retailPrice) || parseFloat(retailPrice) <= 0) {
+      return res.status(400).json({ message: 'Valid retail price (greater than 0) is required' });
+    }
+
+    if (stock === undefined || stock === null || stock === '' || isNaN(stock) || parseInt(stock) < 0) {
+      return res.status(400).json({ message: 'Valid stock quantity (0 or greater) is required' });
+    }
+
+    if (!wholesalePrice || isNaN(wholesalePrice) || parseFloat(wholesalePrice) <= 0) {
+      return res.status(400).json({ message: 'Valid wholesale price (greater than 0) is required' });
+    }
+
+    // Parse numeric values from FormData (they come as strings)
+    const parsedRetailPrice = parseFloat(retailPrice);
+    const parsedStock = parseInt(stock);
+    const parsedWholesalePrice = parseFloat(wholesalePrice);
+    const parsedWholesaleMinQty = wholesaleMinQty ? parseInt(wholesaleMinQty) : 1;
+
     // Resize and optimize uploaded images
     if (req.files && req.files.length > 0) {
       try {
@@ -50,27 +77,42 @@ exports.createProduct = async (req, res) => {
     const images = req.files ? req.files.map(file => `/uploads/products/${file.filename}`) : [];
 
     const product = new Product({
-      name,
-      description,
-      category,
-      retailPrice,
-      stock,
+      name: name.trim(),
+      description: description.trim(),
+      category: category || 'Electronics',
+      retailPrice: parsedRetailPrice,
+      stock: parsedStock,
       owner: req.user._id,
       ownerType: 'wholesaler',
       wholesaleEnabled: true,  // ✅ IMPORTANT: Mark as wholesale
-      wholesaleMinQty: wholesaleMinQty || 1,
-      wholesalePrice,
-      wholesaleTiers: wholesaleTiers ? JSON.parse(wholesaleTiers) : [],
+      wholesaleMinQty: parsedWholesaleMinQty,
+      wholesalePrice: parsedWholesalePrice,
+      wholesaleTiers: wholesaleTiers ? (typeof wholesaleTiers === 'string' ? JSON.parse(wholesaleTiers) : wholesaleTiers) : [],
       images,
-      isLocalProduct: !!isLocalProduct,
-      region
+      isLocalProduct: isLocalProduct === 'true' || isLocalProduct === true,
+      region: region ? region.trim() : undefined
     });
 
     await product.save();
     res.status(201).json(product);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: err.message });
+    console.error('Error creating product:', err);
+    
+    // Handle MongoDB validation errors
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ 
+        message: 'Product validation failed', 
+        errors 
+      });
+    }
+    
+    // Handle JSON parse errors
+    if (err.name === 'SyntaxError') {
+      return res.status(400).json({ message: 'Invalid data format' });
+    }
+    
+    res.status(500).json({ message: err.message || 'Failed to create product' });
   }
 };
 
