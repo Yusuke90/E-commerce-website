@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth, authorizeRoles } = require('../middleware/authMiddleware');
+const { validateOrder } = require('../middleware/validation');
 const orderController = require('../controllers/orderController');
 
 // All routes require authentication
 router.use(requireAuth);
 
 // Customer routes
-router.post('/', orderController.createOrder); // Create order from cart
+router.post('/', validateOrder, orderController.createOrder); // Create order from cart
 router.get('/my-orders', orderController.getMyOrders); // Get customer's orders
 router.get('/:id', orderController.getOrderById); // Get single order details
 router.put('/:id/cancel', orderController.cancelOrder); // Cancel order

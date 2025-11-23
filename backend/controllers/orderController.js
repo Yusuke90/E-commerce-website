@@ -87,15 +87,33 @@ exports.createOrder = async (req, res) => {
     
     await order.save();
     
-    // ✅ FIX: Only deduct stock for non-online payments immediately
+    // ✅ BUG FIX: Use transaction to prevent race conditions in stock deduction
     // For online payments, stock will be deducted after payment verification
     if (paymentMethod !== 'online') {
-      for (const cartItem of cart.items) {
-        const product = cartItem.product;
-        if (product) {
-          product.stock -= cartItem.quantity;
-          await product.save();
-        }
+      const session = await Cart.db.startSession();
+      try {
+        await session.withTransaction(async () => {
+          // Re-check stock within transaction to prevent race conditions
+          for (const cartItem of cart.items) {
+            const product = await Product.findById(cartItem.product._id).session(session);
+            if (!product) {
+              throw new Error(`Product ${cartItem.product._id} not found`);
+            }
+            if (product.stock < cartItem.quantity) {
+              throw new Error(`Insufficient stock for ${product.name}. Only ${product.stock} available`);
+            }
+            product.stock -= cartItem.quantity;
+            await product.save({ session });
+          }
+        });
+      } catch (err) {
+        // If transaction fails, delete the order
+        await Order.findByIdAndDelete(order._id);
+        return res.status(400).json({ 
+          message: err.message || 'Failed to process order due to stock unavailability' 
+        });
+      } finally {
+        await session.endSession();
       }
     }
     
@@ -109,8 +127,15 @@ exports.createOrder = async (req, res) => {
       orderId: order._id
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error('Order creation error:', err);
+    if (err.message.includes('stock') || err.message.includes('Stock')) {
+      res.status(400).json({ message: err.message });
+    } else {
+      res.status(500).json({ 
+        message: 'Failed to create order. Please try again or contact support if the problem persists.',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    }
   }
 };
 
@@ -124,8 +149,11 @@ exports.getMyOrders = async (req, res) => {
     
     res.json(orders);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -150,8 +178,11 @@ exports.getOrderById = async (req, res) => {
     
     res.json(order);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -179,8 +210,11 @@ exports.getSellerOrders = async (req, res) => {
     
     res.json(filteredOrders);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -240,8 +274,11 @@ exports.updateOrderStatus = async (req, res) => {
     
     res.json({ message: 'Order status updated', order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -281,8 +318,11 @@ exports.cancelOrder = async (req, res) => {
     
     res.json({ message: 'Order cancelled successfully', order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -307,7 +347,10 @@ exports.getOrderStats = async (req, res) => {
     
     res.json({ stats, totalOrders });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch your orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };

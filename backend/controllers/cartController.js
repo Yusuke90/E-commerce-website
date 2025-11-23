@@ -13,10 +13,57 @@ exports.getCart = async (req, res) => {
       await cart.save();
     }
     
-    res.json(cart);
+    // ✅ BUG FIX: Validate stock for each cart item and remove out-of-stock items
+    const validItems = [];
+    const removedItems = [];
+    
+    for (const item of cart.items) {
+      if (!item.product) {
+        // Product was deleted
+        removedItems.push({ productId: item.product, reason: 'Product no longer exists' });
+        continue;
+      }
+      
+      // Check if product has sufficient stock
+      if (item.product.stock < item.quantity) {
+        if (item.product.stock === 0) {
+          removedItems.push({ 
+            productId: item.product._id, 
+            productName: item.product.name,
+            reason: 'Out of stock' 
+          });
+          continue;
+        } else {
+          // Adjust quantity to available stock
+          item.quantity = item.product.stock;
+          removedItems.push({ 
+            productId: item.product._id, 
+            productName: item.product.name,
+            reason: `Only ${item.product.stock} available, quantity adjusted`,
+            adjustedQuantity: item.product.stock
+          });
+        }
+      }
+      
+      validItems.push(item);
+    }
+    
+    // Update cart with valid items only
+    if (removedItems.length > 0) {
+      cart.items = validItems;
+      await cart.save();
+    }
+    
+    // Return cart with warnings if items were removed
+    const response = cart.toObject();
+    if (removedItems.length > 0) {
+      response.warnings = removedItems;
+    }
+    
+    res.json(response);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
@@ -78,8 +125,11 @@ exports.addToCart = async (req, res) => {
     
     res.json({ message: 'Item added to cart', cart });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Cart error:', err);
+    res.status(500).json({ 
+      message: 'Failed to process cart operation. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -133,8 +183,11 @@ exports.updateCartItem = async (req, res) => {
     
     res.json({ message: 'Cart updated', cart });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Cart error:', err);
+    res.status(500).json({ 
+      message: 'Failed to process cart operation. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -157,8 +210,11 @@ exports.removeFromCart = async (req, res) => {
     
     res.json({ message: 'Item removed from cart', cart });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Cart error:', err);
+    res.status(500).json({ 
+      message: 'Failed to process cart operation. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -175,7 +231,10 @@ exports.clearCart = async (req, res) => {
     
     res.json({ message: 'Cart cleared', cart });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Cart error:', err);
+    res.status(500).json({ 
+      message: 'Failed to process cart operation. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };

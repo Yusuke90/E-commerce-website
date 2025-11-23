@@ -85,15 +85,36 @@ exports.createB2BOrder = async (req, res) => {
 
     await order.save();
 
-    // ✅ FIX: Only deduct stock for non-online payments immediately
+    // ✅ BUG FIX: Use transaction to prevent race conditions in stock deduction
     // For online payments, stock will be deducted after payment verification
     if (paymentMethod !== 'online') {
-      for (const item of items) {
-        const product = await Product.findById(item.productId);
-        if (product) {
-          product.stock -= item.quantity;
-          await product.save();
-        }
+      const session = await Order.db.startSession();
+      try {
+        await session.withTransaction(async () => {
+          // Re-check stock and minimum quantity within transaction
+          for (const item of items) {
+            const product = await Product.findById(item.productId).session(session);
+            if (!product) {
+              throw new Error(`Product ${item.productId} not found`);
+            }
+            if (product.stock < item.quantity) {
+              throw new Error(`Insufficient stock for ${product.name}. Only ${product.stock} available`);
+            }
+            if (item.quantity < product.wholesaleMinQty) {
+              throw new Error(`Minimum order quantity for ${product.name} is ${product.wholesaleMinQty}`);
+            }
+            product.stock -= item.quantity;
+            await product.save({ session });
+          }
+        });
+      } catch (err) {
+        // If transaction fails, delete the order
+        await Order.findByIdAndDelete(order._id);
+        return res.status(400).json({ 
+          message: err.message || 'Failed to process B2B order due to stock unavailability' 
+        });
+      } finally {
+        await session.endSession();
       }
     }
 
@@ -104,7 +125,14 @@ exports.createB2BOrder = async (req, res) => {
     });
   } catch (err) {
     console.error('B2B order error:', err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+    if (err.message.includes('stock') || err.message.includes('Stock') || err.message.includes('quantity')) {
+      res.status(400).json({ message: err.message });
+    } else {
+      res.status(500).json({ 
+        message: 'Failed to create B2B order. Please try again or contact support if the problem persists.',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    }
   }
 };
 
@@ -121,8 +149,11 @@ exports.getMyB2BOrders = async (req, res) => {
 
     res.json(orders);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching B2B orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch B2B orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
 
@@ -148,7 +179,10 @@ exports.getWholesalerB2BOrders = async (req, res) => {
 
     res.json(filteredOrders);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching B2B orders:', err);
+    res.status(500).json({ 
+      message: 'Failed to fetch B2B orders. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
