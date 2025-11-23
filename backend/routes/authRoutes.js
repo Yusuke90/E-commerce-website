@@ -14,8 +14,6 @@ router.post('/verify-login-otp', authController.verifyLoginOTP);
 // OAuth routes
 router.get('/google/url', oauthController.getGoogleAuthUrl);
 router.get('/google/callback', oauthController.googleCallback);
-router.get('/facebook/url', oauthController.getFacebookAuthUrl);
-router.get('/facebook/callback', oauthController.facebookCallback);
 
 // Keep old endpoints for backward compatibility (optional - can remove later)
 // router.post('/signup', authController.signup);
