@@ -8,7 +8,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { success, error: showError } = useToast();
+  const { success, error: showError, confirm } = useToast();
 
   useEffect(() => {
     fetchOrders();
@@ -28,7 +28,13 @@ const Orders = () => {
   };
 
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    const confirmed = await confirm('Are you sure you want to cancel this order?', {
+      type: 'warning',
+      title: 'Cancel Order',
+      confirmText: 'Cancel Order',
+      cancelText: 'Keep Order'
+    });
+    if (!confirmed) return;
 
     try {
       await api.put(`/orders/${orderId}/cancel`);

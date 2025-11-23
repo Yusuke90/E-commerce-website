@@ -6,7 +6,7 @@ import Loading from '../components/Loading';
 
 const Cart = () => {
     const { cart, loading, updateCartItem, removeFromCart } = useCart();
-    const { success, error } = useToast();
+    const { success, error, confirm } = useToast();
     const navigate = useNavigate();
 
     const handleQuantityChange = async (productId, newQuantity) => {
@@ -29,8 +29,16 @@ const Cart = () => {
     };
 
     const handleRemove = async (productId, skipConfirm = false) => {
-        if (!skipConfirm && !window.confirm('Remove this item from cart?')) {
-            return;
+        if (!skipConfirm) {
+            const confirmed = await confirm('Remove this item from cart?', {
+                type: 'warning',
+                title: 'Remove Item',
+                confirmText: 'Remove',
+                cancelText: 'Keep'
+            });
+            if (!confirmed) {
+                return;
+            }
         }
         try {
             const result = await removeFromCart(productId);

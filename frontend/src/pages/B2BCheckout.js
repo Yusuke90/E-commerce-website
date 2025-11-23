@@ -9,7 +9,7 @@ import { createPaymentOrder, verifyPayment, initiateRazorpayPayment } from '../s
 export default function B2BCheckout() {
   const { b2bCart, clearB2BCart, b2bTotal, removeFromB2BCart, updateB2BCartQuantity } = useB2BCart();
   const { user } = useAuth();
-  const { success, error: showError } = useToast();
+  const { success, error: showError, confirm } = useToast();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -241,8 +241,14 @@ export default function B2BCheckout() {
                     </p>
                   </div>
                   <button
-                    onClick={() => {
-                      if (window.confirm('Remove this item from cart?')) {
+                    onClick={async () => {
+                      const confirmed = await confirm('Remove this item from cart?', {
+                        type: 'warning',
+                        title: 'Remove Item',
+                        confirmText: 'Remove',
+                        cancelText: 'Keep'
+                      });
+                      if (confirmed) {
                         removeFromB2BCart(item.product._id);
                       }
                     }}

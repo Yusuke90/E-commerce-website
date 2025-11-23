@@ -4,7 +4,7 @@ import { useB2BCart } from '../context/B2BCartContext';
 import { useToast } from '../context/ToastContext';
 
 export default function RetailerDashboard() {
-  const { success, error } = useToast();
+  const { success, error, confirm } = useToast();
   const [activeTab, setActiveTab] = useState('browse'); // browse, myProducts, addProduct, orders
   const [wholesalerProducts, setWholesalerProducts] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
@@ -665,10 +665,18 @@ export default function RetailerDashboard() {
                         {order.status !== 'delivered' && order.status !== 'cancelled' && (
                           <div className="flex gap-3 flex-wrap">
                             <button
-                              onClick={() => {
+                              onClick={async () => {
                                 const nextStatus = getNextStatus(order.status);
-                                if (nextStatus && window.confirm(`Update order status to ${nextStatus}?`)) {
-                                  updateOrderStatus(order._id, nextStatus);
+                                if (nextStatus) {
+                                  const confirmed = await confirm(`Update order status to ${nextStatus}?`, {
+                                    type: 'info',
+                                    title: 'Update Order Status',
+                                    confirmText: 'Update',
+                                    cancelText: 'Cancel'
+                                  });
+                                  if (confirmed) {
+                                    updateOrderStatus(order._id, nextStatus);
+                                  }
                                 }
                               }}
                               className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -680,8 +688,14 @@ export default function RetailerDashboard() {
                             </button>
                             {order.status !== 'delivered' && (
                               <button
-                                onClick={() => {
-                                  if (window.confirm('Mark this order as delivered?')) {
+                                onClick={async () => {
+                                  const confirmed = await confirm('Mark this order as delivered?', {
+                                    type: 'info',
+                                    title: 'Mark as Delivered',
+                                    confirmText: 'Mark Delivered',
+                                    cancelText: 'Cancel'
+                                  });
+                                  if (confirmed) {
                                     updateOrderStatus(order._id, 'delivered');
                                   }
                                 }}
